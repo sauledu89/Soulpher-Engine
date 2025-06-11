@@ -1,30 +1,27 @@
 #pragma once
 #include "Prerequisites.h"
 
-class 
-Window {
+/**
+ * @file Window.h
+ * @class Window
+ * @brief Maneja la creación y control de la ventana principal del motor gráfico.
+ */
+class Window {
 public:
 	Window() = default;
 	~Window() = default;
 
-	HRESULT
-	init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc);
+	HRESULT init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc);
+	void update();
+	void render();
+	void destroy();
 
-	void 
-	update();
-	
-	void 
-	render();
-	
-	void 
-	destroy();
-
-public:
 	HWND m_hWnd = nullptr;
 	unsigned int m_width;
 	unsigned int m_height;
+
 private:
 	HINSTANCE m_hInst = nullptr;
 	RECT m_rect;
-	std::string m_windowName = "Hybrid Engine";
+	std::string m_windowName = "The Visionary Engine";
 };
