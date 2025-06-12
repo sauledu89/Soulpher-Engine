@@ -75,6 +75,3 @@ Autor
 
 Saúl Eduardo González Vargassgonzalez37079@ucq.edu.mx
 
-Licencia
-
-Proyecto con fines académicos. Todos los derechos reservados al autor. No se permite su distribución sin autorización.
