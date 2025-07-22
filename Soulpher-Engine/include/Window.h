@@ -23,5 +23,5 @@ public:
 private:
 	HINSTANCE m_hInst = nullptr;
 	RECT m_rect;
-	std::string m_windowName = "The Visionary Engine";
+	std::string m_windowName = "Soulpher Engine";
 };

@@ -38,9 +38,6 @@
     <ClInclude Include="include\RenderTargetView.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\Resource.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="include\SwapChain.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -53,8 +50,32 @@
     <ClInclude Include="include\Window.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="Resource.h">
+    <ClInclude Include="include\Resource.h">
       <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ShaderProgram.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UserInterface.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ShaderType.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\BlendState.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Buffer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DepthStencilState.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\InputLayout.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MeshComponent.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +107,42 @@
     <ClCompile Include="src\Window.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="src\BlendState.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DepthStencilState.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\InputLayout.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ShaderProgram.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UserInterface.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Buffer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui_widgets.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui_draw.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui_tables.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\backends\imgui_impl_dx11.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\backends\imgui_impl_win32.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Soulpher-Engine.rc">
@@ -93,8 +150,8 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Soulpher-Engine.fx">
+    <Image Include="Soulpher-Engine.fx">
       <Filter>Shaders</Filter>
-    </FxCompile>
+    </Image>
   </ItemGroup>
 </Project>

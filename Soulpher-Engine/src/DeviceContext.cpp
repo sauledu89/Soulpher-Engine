@@ -76,3 +76,84 @@ void DeviceContext::ClearRenderTargetView(ID3D11RenderTargetView* pRenderTargetV
 
 	m_deviceContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
 }
+
+void DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
+	if (!m_deviceContext || !pInputLayout) {
+		ERROR("DeviceContext", "IASetInputLayout", "Null input layout or context.");
+		return;
+	}
+	m_deviceContext->IASetInputLayout(pInputLayout);
+}
+
+void DeviceContext::VSSetShader(ID3D11VertexShader* pShader, ID3D11ClassInstance* const* ppClassInstances, UINT NumClassInstances) {
+	if (!m_deviceContext || !pShader) {
+		ERROR("DeviceContext", "VSSetShader", "Null vertex shader or context.");
+		return;
+	}
+	m_deviceContext->VSSetShader(pShader, ppClassInstances, NumClassInstances);
+}
+
+void DeviceContext::PSSetShader(ID3D11PixelShader* pShader, ID3D11ClassInstance* const* ppClassInstances, UINT NumClassInstances) {
+	if (!m_deviceContext || !pShader) {
+		ERROR("DeviceContext", "PSSetShader", "Null pixel shader or context.");
+		return;
+	}
+	m_deviceContext->PSSetShader(pShader, ppClassInstances, NumClassInstances);
+}
+
+void DeviceContext::OMSetBlendState(ID3D11BlendState* pBlendState, const FLOAT BlendFactor[4], UINT SampleMask) {
+	if (!m_deviceContext) {
+		ERROR("DeviceContext", "OMSetBlendState", "Null device context.");
+		return;
+	}
+	m_deviceContext->OMSetBlendState(pBlendState, BlendFactor, SampleMask);
+}
+
+void DeviceContext::OMSetDepthStencilState(ID3D11DepthStencilState* pDepthStencilState, UINT StencilRef) {
+	if (!m_deviceContext) {
+		ERROR("DeviceContext", "OMSetDepthStencilState", "Null device context.");
+		return;
+	}
+	m_deviceContext->OMSetDepthStencilState(pDepthStencilState, StencilRef);
+}
+
+void DeviceContext::VSSetConstantBuffers(UINT StartSlot, UINT NumBuffers, ID3D11Buffer* const* ppConstantBuffers) {
+	if (!m_deviceContext) {
+		ERROR("DeviceContext", "VSSetConstantBuffers", "Null device context.");
+		return;
+	}
+	m_deviceContext->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
+}
+
+void DeviceContext::PSSetConstantBuffers(UINT StartSlot, UINT NumBuffers, ID3D11Buffer* const* ppConstantBuffers) {
+	if (!m_deviceContext) {
+		ERROR("DeviceContext", "PSSetConstantBuffers", "Null device context.");
+		return;
+	}
+	m_deviceContext->PSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
+}
+
+void DeviceContext::UpdateSubresource(ID3D11Resource* pDstResource, UINT DstSubresource, const D3D11_BOX* pDstBox,
+	const void* pSrcData, UINT SrcRowPitch, UINT SrcDepthPitch) {
+	if (!m_deviceContext || !pDstResource || !pSrcData) {
+		ERROR("DeviceContext", "UpdateSubresource", "Null argument.");
+		return;
+	}
+	m_deviceContext->UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
+}
+
+void DeviceContext::IASetIndexBuffer(ID3D11Buffer* pIndexBuffer, DXGI_FORMAT Format, UINT Offset) {
+	if (!m_deviceContext || !pIndexBuffer) {
+		ERROR("DeviceContext", "IASetIndexBuffer", "Null device context or index buffer.");
+		return;
+	}
+	m_deviceContext->IASetIndexBuffer(pIndexBuffer, Format, Offset);
+}
+
+void DeviceContext::IASetVertexBuffers(UINT StartSlot, UINT NumBuffers, ID3D11Buffer* const* ppVertexBuffers, const UINT* pStrides, const UINT* pOffsets) {
+	if (!m_deviceContext || !ppVertexBuffers) {
+		ERROR("DeviceContext", "IASetVertexBuffers", "Null device context or vertex buffer.");
+		return;
+	}
+	m_deviceContext->IASetVertexBuffers(StartSlot, NumBuffers, ppVertexBuffers, pStrides, pOffsets);
+}
