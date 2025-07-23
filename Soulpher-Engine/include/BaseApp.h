@@ -1,116 +1,134 @@
 #pragma once
 #include "Prerequisites.h"
 #include "Window.h"
+#include "Device.h"
+#include "SwapChain.h"
+#include "DeviceContext.h"
+#include "Texture.h"
+#include "RenderTargetView.h"
+#include "DepthStencilView.h"
+#include "Viewport.h"
+#include "InputLayout.h"
+#include "ShaderProgram.h"
+#include "Buffer.h"
+#include "MeshComponent.h"
+#include "BlendState.h"
+#include "UserInterface.h"
+#include "ModelLoader.h"
+#include "DepthStencilState.h"
 
-/**
- * @file BaseApp.h
- * @class BaseApp
- * @brief Clase base para una aplicación de motor gráfico con DirectX.
- *
- * Define la estructura fundamental de una aplicación basada en un motor gráfico.
- * Gestiona el ciclo de vida completo de la aplicación:
- * - Inicialización de recursos.
- * - Actualización por frame.
- * - Renderizado del contenido.
- * - Liberación de recursos.
- *
- * También contiene la lógica para iniciar la ventana y ejecutar el bucle principal.
- *
- * @note Esta clase sirve como punto de partida para motores gráficos modulares.
- * Permite derivar subclases específicas como editores, juegos, o simuladores.
- */
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 class BaseApp {
 public:
     /**
-     * @brief Constructor por defecto.
+     * @brief Constructor por defecto de la aplicación base.
      */
     BaseApp() = default;
-
     /**
-     * @brief Destructor por defecto.
+     * @brief Destructor por defecto de la aplicación base.
      */
     ~BaseApp() = default;
 
     /**
-     * @brief Inicializa los componentes de la aplicación.
-     *
-     * Este método debe ser sobrescrito o extendido para inicializar:
-     * - El dispositivo gráfico (Direct3D 11).
-     * - Recursos como texturas, buffers y shaders.
-     * - Subsistemas como audio, física o input.
-     *
-     * @return HRESULT Devuelve S_OK si la inicialización fue exitosa.
-     *
-     * @note En un motor real, este método es vital para preparar la escena o cargar el nivel.
+     * @brief Ejecuta el ciclo principal de la aplicación.
+     * @param hInstance Instancia de la aplicación.
+     * @param nCmdShow Parámetro de visualización de la ventana.
+     * @return Código de salida de la aplicación.
      */
-    HRESULT init();
+    int run(HINSTANCE hInstance, int nCmdShow);
 
+private:
+    // Ciclo de vida de la aplicación
     /**
-     * @brief Actualiza la lógica de la aplicación una vez por frame.
-     *
-     * Aquí se deben manejar todos los cálculos relacionados con:
-     * - Movimiento de objetos.
-     * - Lógica del juego.
-     * - Animaciones.
-     * - Actualización del estado interno.
-     *
-     * @note Este método representa el "Update()" típico de un game loop.
+     * @brief Inicializa la aplicación y sus recursos.
+     * @param hInstance Instancia de la aplicación.
+     * @param nCmdShow Parámetro de visualización de la ventana.
+     * @return Resultado de la inicialización.
+     */
+    HRESULT init(HINSTANCE hInstance, int nCmdShow);
+    /**
+     * @brief Actualiza el estado de la aplicación.
      */
     void update();
-
     /**
-     * @brief Renderiza un frame de la aplicación.
-     *
-     * Este método se encarga de:
-     * - Limpiar el back buffer.
-     * - Configurar el pipeline de renderizado.
-     * - Dibujar la escena.
-     * - Presentar el frame a la pantalla.
-     *
-     * @note En un motor completo, se podría dividir entre renderizado 3D, UI, y postprocesado.
+     * @brief Renderiza la escena.
      */
     void render();
-
     /**
-     * @brief Libera todos los recursos usados por la aplicación.
-     *
-     * Debe llamarse al final del ciclo de vida para liberar:
-     * - Buffers de GPU.
-     * - Recursos de textura y shaders.
-     * - Memoria del sistema asociada.
-     *
-     * @note Fundamental para evitar memory leaks y asegurar cierres limpios.
+     * @brief Libera los recursos de la aplicación.
      */
     void destroy();
 
     /**
-     * @brief Ejecuta el bucle principal de la aplicación.
-     *
-     * Inicializa la ventana principal y entra en el bucle de mensajes de Windows.
-     * Este método representa el punto de entrada del motor desde WinMain.
-     *
-     * @param hInstance Instancia del proceso actual.
-     * @param hPrevInstance Instancia anterior (obsoleta en Win32, usualmente NULL).
-     * @param lpCmdLine Argumentos recibidos desde línea de comandos.
-     * @param nCmdShow Modo de visualización inicial de la ventana.
-     * @param wndproc Función de callback que procesa mensajes de Windows (WM_*).
-     * @return int Código de salida de la aplicación.
-     *
-     * @note Este método combina la arquitectura Win32 con la lógica del motor.
-     * Ideal para crear editores gráficos o juegos de escritorio.
+     * @brief Procedimiento de ventana estático.
+     * @param hWnd Handle de la ventana.
+     * @param message Mensaje recibido.
+     * @param wParam Parámetro adicional.
+     * @param lParam Parámetro adicional.
+     * @return Resultado del procesamiento del mensaje.
      */
-    int run(HINSTANCE hInstance,
-        HINSTANCE hPrevInstance,
-        LPWSTR lpCmdLine,
-        int nCmdShow,
-        WNDPROC wndproc);
+    static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 private:
-    /**
-     * @brief Ventana principal asociada a la aplicación.
-     *
-     * Controla la creación, visualización y eventos de la ventana Win32.
-     * Se utiliza internamente para establecer el contexto gráfico.
-     */
-    Window m_window;
+    // Componentes de la aplicación
+    Window g_window;
+    Device g_device;
+    SwapChain g_swapChain;
+    DeviceContext g_deviceContext;
+    Texture g_backBuffer;
+    RenderTargetView g_renderTargetView;
+    Texture g_depthStencil;
+    DepthStencilView g_depthStencilView;
+    Viewport g_viewport;
+    ShaderProgram g_shaderProgram;
+    ShaderProgram g_shaderShadow;
+    BlendState g_shadowBlendState;
+    DepthStencilState g_shadowDepthStencilState;
+    UserInterface g_userInterface;
+    ModelLoader g_modelLoader;
+
+    // Buffers de cámara
+    Buffer m_neverChanges;
+    Buffer m_changeOnResize;
+
+    // Buffers del cubo
+    Buffer m_vertexBuffer;
+    Buffer m_indexBuffer;
+    Buffer m_changeEveryFrame;
+
+    // Buffers de la sombra del cubo
+    Buffer m_constShadow;
+
+    // Buffers del plano
+    Buffer m_planeVertexBuffer;
+    Buffer m_planeIndexBuffer;
+    Buffer m_constPlane;
+
+    // Recursos de DirectX
+    ID3D11ShaderResourceView* g_pTextureRV = nullptr;
+    ID3D11SamplerState* g_pSamplerLinear = nullptr;
+    ID3D11DepthStencilState* g_pShadowDepthStencilState = nullptr;
+
+    // Matrices de transformación y estado
+    XMMATRIX g_World;
+    XMMATRIX g_PlaneWorld;
+    XMMATRIX g_View;
+    XMMATRIX g_Projection;
+    XMFLOAT4 g_vMeshColor;
+    XMFLOAT4 g_LightPos;
+
+    XMFLOAT3 g_ModelRotation;
+    float g_ModelScale;
+
+    // Geometría
+    MeshComponent cubeMesh;
+    //MeshComponent planeMesh;
+
+    // Estructuras de Constant Buffers
+    CBNeverChanges cbNeverChanges;
+    CBChangeOnResize cbChangesOnResize;
+    //CBChangesEveryFrame cbPlane;
+    CBChangesEveryFrame cb;
+    CBChangesEveryFrame cbShadow;
 };

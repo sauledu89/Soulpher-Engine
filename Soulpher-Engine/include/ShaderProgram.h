@@ -1,8 +1,6 @@
 ﻿#pragma once
-
 #include "Prerequisites.h"
 #include "InputLayout.h"
-#include "ShaderType.h" // ✅ Asegúrate de que aquí esté definido el enum ShaderType
 
 class Device;
 class DeviceContext;
@@ -14,38 +12,48 @@ class DeviceContext;
  * Esta clase es responsable de cargar, compilar e inicializar los programas de sombreado
  * (vertex y pixel shaders) que se utilizarán en el pipeline de renderizado.
  */
-class ShaderProgram {
+class
+    ShaderProgram {
 public:
     ShaderProgram() = default;
     ~ShaderProgram() = default;
 
-    HRESULT init(Device& device,
-        const std::string& fileName,
-        std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
+    HRESULT
+        init(Device& device,
+            const std::string& fileName,
+            std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
 
-    void update();
+    void
+        update();
 
-    void render(DeviceContext& deviceContext);
-    void render(DeviceContext& deviceContext, ShaderType type);
+    void
+        render(DeviceContext& deviceContext);
 
-    void destroy();
+    void
+        render(DeviceContext& deviceContext, ShaderType type);
 
-    HRESULT CreateInputLayout(Device& device,
-        std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
+    void
+        destroy();
 
-    HRESULT CreateShader(Device& device, ShaderType type);
-    HRESULT CreateShader(Device& device, ShaderType type, const std::string& fileName);
+    HRESULT
+        CreateInputLayout(Device& device, std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
 
-    HRESULT CompileShaderFromFile(const char* szFileName,
-        LPCSTR szEntryPoint,
-        LPCSTR szShaderModel,
-        ID3DBlob** ppBlobOut);
+    HRESULT
+        CreateShader(Device& device, ShaderType type);
+
+    HRESULT
+        CreateShader(Device& device, ShaderType type, const std::string& fileName);
+
+    HRESULT
+        CompileShaderFromFile(char* szFileName,
+            LPCSTR szEntryPoint,
+            LPCSTR szShaderModel,
+            ID3DBlob** ppBlobOut);
 
 public:
     ID3D11VertexShader* m_VertexShader = nullptr;
     ID3D11PixelShader* m_PixelShader = nullptr;
     InputLayout m_inputLayout;
-
 private:
     std::string m_shaderFileName;
     ID3DBlob* m_vertexShaderData = nullptr;
