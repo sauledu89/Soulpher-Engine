@@ -1,77 +1,30 @@
-Soulpher Engine
+# Soulpher Engine
 
-Bienvenido al repositorio oficial del Soulpher Engine, un motor gráfico modular desarrollado desde cero en DirectX 11 como parte del curso de Arquitectura de Motores Gráficos impartida por el profesor Roberto Charretón Kaplun. Este proyecto tiene como objetivo comprender e implementar los componentes esenciales de un pipeline gráfico moderno.
+Bienvenido al repositorio oficial de **Soulpher Engine**, un motor gráfico modular desarrollado desde cero en **DirectX 11** como parte del curso de **Arquitectura de Motores Gráficos** impartido por el profesor **Roberto Charretón Kaplun**.  
+Esta versión final implementa un pipeline gráfico más completo y estructurado, incorporando manejo avanzado de recursos, renderizado modular y soporte para interfaz de usuario con **Dear ImGui**.
 
-Características principales:
+---
 
-- Inicialización de ventana Win32 personalizada
+## 🚀 Características principales
 
-- Dispositivo y contexto DirectX 11 (Device, DeviceContext)
+- **Inicialización de ventana Win32** personalizada con clase propia (`Window`).
+- **Device & DeviceContext** para la creación y administración de recursos DirectX 11.
+- **SwapChain** configurable para el intercambio de buffers.
+- **Render Target View** y **Depth Stencil View** para control de color, profundidad y stencil.
+- **Viewport** adaptable al tamaño de la ventana.
+- **Sistema de Shaders** (`ShaderProgram`) con compilación desde archivos `.fx`.
+- **Buffers constantes de cámara** (`CBNeverChanges`, `CBChangeOnResize`).
+- **Sistema de malla y texturas** (`MeshComponent`, `Texture`).
+- **Cargador de modelos FBX** (`ModelLoader`) para importar assets externos.
+- **Sistema ECS básico** con actores (`Actor`, `Transform`).
+- **Plano de referencia** con textura y un modelo FBX 3D (Martis Ashura King) cargado dinámicamente.
+- **Interfaz de usuario** con **Dear ImGui**, incluyendo soporte para múltiples viewports.
+- **Arquitectura modular** separada por clases independientes.
 
-- Sistema de SwapChain para buffer de intercambio
+---
 
-- Render Target y Depth Stencil View configurables
-
-- Viewport adaptable al tamaño de ventana
-
-- Compilación de shaders desde archivos .fx
-
-- Renderizado de cubo 3D con textura
-
-- Proyección de sombra plana usando blending y stencil buffer
-
-- Sistema modular y escalable por clases independientes
-
-Estructura del proyecto
-
-SoulpherEngine/
-├── BaseApp.*                 # Clase base del motor
-├── Window.*                  # Manejo de ventana Win32
-├── Device.* / DeviceContext.*# Inicialización de DirectX
-├── SwapChain.*               # Control del intercambio de buffers
-├── Texture.*                 # Manejo de texturas y recursos
-├── RenderTargetView.*        # Target de renderizado principal
-├── DepthStencilView.*        # Buffer de profundidad y stencil
-├── Viewport.*                # Área visible de dibujo
-├── Soulpher-Engine.cpp       # Punto de entrada principal
-├── Shaders/*.fx              # Archivos de vertex y pixel shaders
-
-Requisitos
-
-- Visual Studio 2022 o superior
-
-- SDK de Windows 10 o superior
-
-- DirectX 11 (D3D11)
-
-Librerías linkeadas:
-
-- d3d11.lib
-
-- d3dcompiler.lib
-
-- dxguid.lib
-
-- winmm.lib
-
-Instrucciones de compilación
-
-- Clona el repositorio en tu equipo local.
-
-- Abre el proyecto con Visual Studio.
-
-- Asegúrate de tener los archivos .fx y seafloor.dds en la carpeta del ejecutable (/Debug/ o /Release/).
-
-- Compila el proyecto (Ctrl + Shift + B).
-
-- Ejecuta el programa. Deberías ver una ventana con un cubo animado sobre un plano con su sombra proyectada.
-
-Vista previa
-
-![image](https://github.com/user-attachments/assets/0f98383a-9fe3-47f9-9093-b6ff8741288d)
+## 📂 Estructura del proyecto
 
 
-Autor
 
-Saúl Eduardo González Vargassgonzalez37079@ucq.edu.mx
-
+![Soulpher-Engine-2](https://github.com/user-attachments/assets/56045229-0796-4791-a405-babeee5f21dc)
