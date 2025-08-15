@@ -1,73 +1,101 @@
-/**
+Ôªø/**
  * @file Window.cpp
- * @brief ImplementaciÛn de la clase Window.
+ * @brief Implementaci√≥n de la clase Window para The Visionary Engine.
+ *
+ * @details
+ * Esta clase encapsula la creaci√≥n y gesti√≥n de una ventana Win32, la cual es
+ * el contenedor principal donde se renderiza todo el contenido del motor gr√°fico.
+ *
+ * En el contexto de desarrollo de videojuegos:
+ * - La ventana es el primer elemento visual del motor.
+ * - Define el √°rea donde se mostrar√°n los gr√°ficos de DirectX.
+ * - Proporciona el handle (HWND) necesario para inicializar el dispositivo gr√°fico.
+ *
+ * @note
+ * El motor usa la API Win32 para manejar la ventana, lo que significa que este c√≥digo
+ * solo funcionar√° en sistemas Windows. Cambiar a multiplataforma requerir√≠a abstraer
+ * esta parte y reemplazarla con bibliotecas como SDL o GLFW.
  */
 
 #include "Window.h"
 
  /**
-  * @brief Inicializa la ventana principal de la aplicaciÛn.
+  * @brief Inicializa y crea una ventana Win32.
   *
-  * Este mÈtodo registra una clase de ventana de Win32 y crea una ventana visible
-  * con un tamaÒo predefinido. TambiÈn guarda los datos esenciales como el `HWND` y dimensiones.
+  * @param hInstance  Instancia de la aplicaci√≥n (provista por WinMain).
+  * @param nCmdShow   Par√°metro que indica c√≥mo mostrar la ventana (provisto por WinMain).
+  * @param wndproc    Funci√≥n callback para procesar los mensajes de Windows.
+  * @return HRESULT   S_OK si se cre√≥ la ventana correctamente, o c√≥digo de error si fall√≥.
   *
-  * @param hInstance Instancia de la aplicaciÛn (provista por WinMain).
-  * @param nCmdShow Par·metro que define cÛmo se mostrar· la ventana (normal, minimizada, etc.).
-  * @param wndproc FunciÛn que manejar· los mensajes de Windows (eventos).
-  * @return HRESULT S_OK si fue exitosa; E_FAIL si algo falla.
+  * @note
+  * Este m√©todo:
+  *  - Registra la clase de ventana (WNDCLASSEX).
+  *  - Crea la ventana con un tama√±o inicial de 1200x1010 px.
+  *  - Calcula el √°rea cliente ajustada para el render.
+  *
+  * @par Ejemplo de uso:
+  * @code
+  * Window window;
+  * if (FAILED(window.init(hInstance, nCmdShow, WndProc))) {
+  *     return -1;
+  * }
+  * @endcode
   */
 HRESULT Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc) {
+    // Guarda la instancia de la aplicaci√≥n
     m_hInst = hInstance;
 
-    // 1. Configuramos la clase de ventana
+    // Configuraci√≥n y registro de la clase de ventana
     WNDCLASSEX wcex;
     wcex.cbSize = sizeof(WNDCLASSEX);
-    wcex.style = CS_HREDRAW | CS_VREDRAW;  // Redibujar si se redimensiona
-    wcex.lpfnWndProc = wndproc;            // FunciÛn que recibe eventos (mouse, teclado, etc.)
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = wndproc;
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = m_hInst;
-    wcex.hIcon = LoadIcon(m_hInst, (LPCTSTR)IDI_TUTORIAL1); // Õcono de la ventana
-    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);             // Cursor est·ndar
-    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);        // Fondo blanco
+    wcex.hIcon = LoadIcon(m_hInst, (LPCTSTR)IDI_TUTORIAL1);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszMenuName = nullptr;
-    wcex.lpszClassName = "TutorialWindowClass";             // Nombre interno
-    wcex.hIconSm = LoadIcon(wcex.hInstance, (LPCTSTR)IDI_TUTORIAL1); // Õcono pequeÒo
+    wcex.lpszClassName = "TutorialWindowClass";
+    wcex.hIconSm = LoadIcon(wcex.hInstance, (LPCTSTR)IDI_TUTORIAL1);
 
-    // 2. Registramos la clase de ventana con el sistema operativo
     if (!RegisterClassEx(&wcex)) {
         MessageBox(nullptr, "RegisterClassEx failed!", "Error", MB_OK);
         ERROR("Window", "init", "CHECK FOR RegisterClassEx");
         return E_FAIL;
     }
 
-    // 3. Definimos el tamaÒo interno del cliente (·rea ˙til de la ventana)
+    // Crea la ventana con tama√±o inicial
     RECT rc = { 0, 0, 1200, 1010 };
     m_rect = rc;
-    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);  // Ajusta para bordes y barra de tÌtulo
+    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
-    // 4. Creamos la ventana en pantalla
     m_hWnd = CreateWindow(
-        "TutorialWindowClass",        // Clase registrada
-        m_windowName.c_str(),         // TÌtulo de la ventana
-        WS_OVERLAPPEDWINDOW,          // Estilo cl·sico de ventana con bordes
-        CW_USEDEFAULT, CW_USEDEFAULT, // PosiciÛn en pantalla
-        rc.right - rc.left,           // Ancho
-        rc.bottom - rc.top,           // Alto
-        nullptr, nullptr, hInstance, nullptr);
+        "TutorialWindowClass",
+        m_windowName.c_str(),
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        m_rect.right - m_rect.left,
+        m_rect.bottom - m_rect.top,
+        nullptr,
+        nullptr,
+        hInstance,
+        nullptr
+    );
 
-    // 5. ValidaciÛn
     if (!m_hWnd) {
         MessageBox(nullptr, "CreateWindow failed!", "Error", MB_OK);
         ERROR("Window", "init", "CHECK FOR CreateWindow()");
         return E_FAIL;
     }
 
-    // 6. Mostramos la ventana y la actualizamos
+    // Muestra y actualiza la ventana
     ShowWindow(m_hWnd, nCmdShow);
     UpdateWindow(m_hWnd);
 
-    // 7. Obtenemos tamaÒo real del ·rea del cliente
+    // Obtiene dimensiones del √°rea cliente (donde se dibuja el juego)
     GetClientRect(m_hWnd, &m_rect);
     m_width = m_rect.right - m_rect.left;
     m_height = m_rect.bottom - m_rect.top;
@@ -76,29 +104,32 @@ HRESULT Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc) {
 }
 
 /**
- * @brief MÈtodo de actualizaciÛn de la ventana.
+ * @brief Actualiza la l√≥gica de la ventana.
  *
- * Actualmente no hace nada, pero se puede usar para detectar eventos del sistema.
+ * @note Actualmente vac√≠o, pero en un motor real aqu√≠ podr√≠a:
+ *  - Comprobar si la ventana fue redimensionada.
+ *  - Procesar eventos de entrada adicionales.
  */
 void Window::update() {
-    // Placeholder por si se quiere agregar lÛgica de manejo de eventos personalizados.
 }
 
 /**
- * @brief MÈtodo de renderizado de la ventana.
+ * @brief Renderiza elementos propios de la ventana.
  *
- * Normalmente no se usa directamente ya que DirectX se encarga del render.
+ * @note En este motor, la ventana no tiene contenido propio que renderizar.
+ *       Todo el dibujo lo gestiona DirectX en el √°rea cliente.
  */
 void Window::render() {
-    // AquÌ podrÌas dibujar UI con GDI si no est·s usando DirectX.
 }
 
 /**
- * @brief Libera recursos asociados con la ventana.
+ * @brief Libera recursos asociados a la ventana.
  *
- * Actualmente no hace nada porque WinMain se encarga del ciclo de vida,
- * pero es buena pr·ctica tenerlo definido.
+ * @note
+ * Actualmente vac√≠o porque la API Win32 libera autom√°ticamente
+ * los recursos al cerrar la aplicaci√≥n, pero se podr√≠a:
+ *  - Desregistrar la clase de ventana.
+ *  - Liberar handles y recursos manualmente.
  */
 void Window::destroy() {
-    // Future-proof: ˙til si quieres destruir o recrear la ventana.
 }

@@ -18,6 +18,21 @@
     <Filter Include="source">
       <UniqueIdentifier>{6b5e4622-1068-46fb-9fb0-08244da3620c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Imgui">
+      <UniqueIdentifier>{d06059f1-90e0-44c9-9404-b7adda96c013}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ECS">
+      <UniqueIdentifier>{65395dd1-3509-491f-bcb2-64ca0404dcd6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ECS">
+      <UniqueIdentifier>{211f7b54-c40b-477f-9138-a3a8600cd91f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Imgui\include">
+      <UniqueIdentifier>{62467d97-fb10-47f9-88a8-0b5a097c7e7e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Imgui\src">
+      <UniqueIdentifier>{bdaca937-983d-4e96-b3b5-e645b004e313}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\BaseApp.h">
@@ -59,9 +74,6 @@
     <ClInclude Include="include\UserInterface.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\ShaderType.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="include\BlendState.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -76,6 +88,60 @@
     </ClInclude>
     <ClInclude Include="include\MeshComponent.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ModelLoader.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\OBJ_Loader.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Actor.h">
+      <Filter>ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Component.h">
+      <Filter>ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Entity.h">
+      <Filter>ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Transform.h">
+      <Filter>ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rasterizer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Screenshot.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\stb_image.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SamplerState.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\imconfig.h">
+      <Filter>Imgui\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\imgui.h">
+      <Filter>Imgui\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\imgui_internal.h">
+      <Filter>Imgui\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\imstb_rectpack.h">
+      <Filter>Imgui\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\imstb_textedit.h">
+      <Filter>Imgui\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\imstb_truetype.h">
+      <Filter>Imgui\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\backends\imgui_impl_dx11.h">
+      <Filter>Imgui\src</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui-docking-znly-docking\backends\imgui_impl_win32.h">
+      <Filter>Imgui\src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -125,23 +191,44 @@
     <ClCompile Include="src\Buffer.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui.cpp">
-      <Filter>Resource Files</Filter>
+    <ClCompile Include="src\ModelLoader.cpp">
+      <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui_widgets.cpp">
-      <Filter>Resource Files</Filter>
+    <ClCompile Include="src\ECS\Actor.cpp">
+      <Filter>source\ECS</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui_draw.cpp">
-      <Filter>Resource Files</Filter>
+    <ClCompile Include="src\ECS\Transform.cpp">
+      <Filter>source\ECS</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\imgui_tables.cpp">
-      <Filter>Resource Files</Filter>
+    <ClCompile Include="src\Rasterizer.cpp">
+      <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\backends\imgui_impl_dx11.cpp">
-      <Filter>Resource Files</Filter>
+    <ClCompile Include="src\SamplerState.cpp">
+      <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Escritorio\UCQ\imgui-docking\imgui-docking\backends\imgui_impl_win32.cpp">
-      <Filter>Resource Files</Filter>
+    <ClCompile Include="src\Screenshot.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\imgui.cpp">
+      <Filter>Imgui\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\imgui_demo.cpp">
+      <Filter>Imgui\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\imgui_draw.cpp">
+      <Filter>Imgui\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\imgui_tables.cpp">
+      <Filter>Imgui\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\imgui_widgets.cpp">
+      <Filter>Imgui\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\backends\imgui_impl_dx11.cpp">
+      <Filter>Imgui\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui-docking-znly-docking\backends\imgui_impl_win32.cpp">
+      <Filter>Imgui\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -150,8 +237,8 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Soulpher-Engine.fx">
+    <FxCompile Include="bin\Soulpher-Engine.fx">
       <Filter>Shaders</Filter>
-    </Image>
+    </FxCompile>
   </ItemGroup>
 </Project>

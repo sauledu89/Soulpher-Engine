@@ -1,90 +1,76 @@
+ï»¿/**
+ * @file Viewport.h
+ * @brief DeclaraciÃ³n de la clase Viewport para gestiÃ³n de Ã¡reas de renderizado en Direct3D 11.
+ *
+ * @details
+ * Un **viewport** es la regiÃ³n de la superficie de render donde Direct3D dibuja la escena.
+ *
+ * ---
+ * ðŸ”¹ **Conceptos clave para estudiantes**:
+ * - Piensa en el viewport como un "marco" o "ventana" dentro de la pantalla donde se muestra la imagen.
+ * - Puedes tener un viewport que ocupe **toda la ventana** o dividir la pantalla en varios viewports (ej. pantalla dividida).
+ * - El viewport no cambia el contenido de la escena, solo dÃ³nde y cÃ³mo se muestra.
+ * - Se usa junto con la proyecciÃ³n y la vista de la cÃ¡mara para calcular la imagen final.
+ *
+ * ---
+ * ðŸ’¡ **Ejemplo de uso en un motor**:
+ * - Inicializar el viewport para que coincida con el tamaÃ±o de la ventana principal.
+ * - Configurar viewports adicionales para depuraciÃ³n (ej. ver mapa de sombras en un recuadro).
+ */
+
 #pragma once
 #include "Prerequisites.h"
 
-/**
- * @file Viewport.h
- * @brief Define el área de renderizado (viewport) en DirectX 11.
- *
- * El viewport especifica la región del render target (pantalla o textura) donde se proyectarán
- * los píxeles procesados. Es crucial para adaptar resoluciones, implementar sistemas como
- * pantalla dividida, herramientas de depuración, cámaras múltiples, entre otros.
- */
-
- //--------------------------------------------------------------------------------------
- // Forward declarations para evitar dependencias circulares innecesarias
- //--------------------------------------------------------------------------------------
 class Window;
 class DeviceContext;
 
 /**
  * @class Viewport
- * @brief Representa un D3D11_VIEWPORT configurable en tiempo de ejecución.
+ * @brief Define el Ã¡rea de renderizado en el pipeline grÃ¡fico de Direct3D 11.
  *
- * Esta clase facilita la creación y activación de un viewport para el pipeline gráfico.
- * Permite definir sus dimensiones desde una ventana o de forma manual, y lo activa
- * en el contexto gráfico para ser utilizado durante el renderizado.
+ * @note Forma parte del motor grÃ¡fico **The Visionary**.
  */
 class Viewport {
 public:
-    /**
-     * @brief Constructor por defecto.
-     */
+    /** @brief Constructor por defecto: no asigna valores iniciales. */
     Viewport() = default;
 
-    /**
-     * @brief Destructor por defecto.
-     */
+    /** @brief Destructor por defecto. */
     ~Viewport() = default;
 
     /**
-     * @brief Inicializa el viewport con base en las dimensiones de una ventana.
+     * @brief Inicializa el viewport usando el tamaÃ±o de la ventana asociada.
+     * @param window Ventana desde la que se obtendrÃ¡n ancho y alto.
+     * @return HRESULT con el estado de la operaciÃ³n.
      *
-     * Esta función extrae el tamaño de la ventana principal para configurar
-     * correctamente la región de dibujo.
-     *
-     * @param window Objeto `Window` que representa la ventana principal de la app.
-     * @return HRESULT Código de éxito o error.
+     * @note Ideal para que el Ã¡rea de render coincida siempre con la ventana principal.
      */
     HRESULT init(const Window& window);
 
     /**
-     * @brief Inicializa el viewport manualmente con valores explícitos.
+     * @brief Inicializa el viewport con valores personalizados.
+     * @param width Ancho en pÃ­xeles del Ã¡rea de render.
+     * @param height Alto en pÃ­xeles del Ã¡rea de render.
+     * @return HRESULT con el estado de la operaciÃ³n.
      *
-     * Útil para configuraciones personalizadas como splitscreen, áreas de UI o
-     * renderizado a texturas fuera de pantalla.
-     *
-     * @param width Ancho del viewport.
-     * @param height Alto del viewport.
-     * @return HRESULT Código de éxito o error.
+     * @note Ãštil para mini-mapas, cÃ¡maras de vista previa o efectos en pantalla dividida.
      */
     HRESULT init(unsigned int width, unsigned int height);
 
-    /**
-     * @brief Actualización por cuadro. Actualmente no implementado.
-     */
+    /** @brief Actualiza propiedades internas del viewport si es necesario. */
     void update();
 
     /**
-     * @brief Activa este viewport en el pipeline gráfico.
+     * @brief Activa este viewport en el pipeline de render.
+     * @param deviceContext Contexto de dispositivo donde se aplicarÃ¡.
      *
-     * Llama internamente a `RSSetViewports()` para aplicar la configuración actual.
-     *
-     * @param deviceContext Contexto de dispositivo sobre el que se aplicará.
+     * @warning Llamar a este mÃ©todo antes de dibujar la escena, para asegurar que el render se haga en el Ã¡rea correcta.
      */
     void render(DeviceContext& deviceContext);
 
-    /**
-     * @brief Libera cualquier recurso asociado al viewport.
-     *
-     * Actualmente no hace nada, ya que `D3D11_VIEWPORT` no requiere destrucción manual.
-     */
+    /** @brief Libera recursos asociados al viewport. */
     void destroy();
 
 public:
-    /**
-     * @brief Estructura `D3D11_VIEWPORT` que define la región visible de render.
-     *
-     * Contiene dimensiones, profundidad mínima y máxima, y posición dentro del render target.
-     */
-    D3D11_VIEWPORT m_viewport;
+    D3D11_VIEWPORT m_viewport; ///< Estructura de configuraciÃ³n del viewport en Direct3D 11.
 };
