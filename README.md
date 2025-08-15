@@ -75,12 +75,6 @@ SoulpherEngine/
 
 ---
 
-## 📸 Vista previa
-
-*(Aquí puedes insertar capturas de pantalla del motor en ejecución)*
-
----
-
 ## 📚 Créditos y librerías utilizadas
 
 - **Microsoft DirectX 11 SDK**
