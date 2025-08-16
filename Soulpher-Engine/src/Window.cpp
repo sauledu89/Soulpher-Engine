@@ -1,6 +1,6 @@
 ﻿/**
  * @file Window.cpp
- * @brief Implementación de la clase Window para The Visionary Engine.
+ * @brief Implementación de la clase Window para Soulpher-Engine.
  *
  * @details
  * Esta clase encapsula la creación y gestión de una ventana Win32, la cual es

@@ -77,5 +77,5 @@ public:
 private:
     HINSTANCE m_hInst = nullptr; ///< Instancia de la aplicación.
     RECT m_rect;                 ///< Área de cliente (coordenadas internas de la ventana).
-    std::string m_windowName = "The Visionary Engine"; ///< Título/nombre de la ventana.
+    std::string m_windowName = "Soulpher-Engine"; ///< Título/nombre de la ventana.
 };

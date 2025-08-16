@@ -1,23 +1,25 @@
 ﻿/**
  * @file BaseApp.h
- * @brief Clase principal de la aplicación.
+ * @brief Núcleo principal de la aplicación y gestor de la escena.
  *
  * @details
- * `BaseApp` encapsula la inicialización, ciclo de vida y cierre de un motor basado en DirectX 11.
- * Sus responsabilidades incluyen:
- * - Creación de ventana y dispositivos gráficos.
- * - Configuración de swap chain, buffers y estados de renderizado.
- * - Carga de modelos, texturas y recursos iniciales de escena.
- * - Control del ciclo principal (game loop).
- * - Integración de la interfaz de usuario (`UserInterface`).
+ * Inicializa y gestiona el núcleo de DirectX 11, crea la ventana y el dispositivo,
+ * configura el swap chain, RTV/DSV y viewport; compila/carga shaders y buffers
+ * de cámara; y prepara la escena inicial con:
+ *  - Un plano de referencia con textura.
+ *  - Un Actor cargado desde FBX (actualmente *Martis Ashura King*), con
+ *    malla en:
+ *      bin/ModelsFBX/martis-ashura-king/Martis/hero_asura.fbx
+ *    y textura difusa en:
+ *      bin/ModelsFBX/martis-ashura-king/Martis/axl_D.png
+ *    (alternativa: axl_wq_D.png en la misma carpeta).
  *
- * @note Para estudiantes:
- * - Este es un ejemplo de **clase de alto nivel** que coordina múltiples subsistemas.
- * - La estructura sigue un patrón común en motores: `init()`, `update()`, `render()`, `destroy()`.
- * - Entender esta clase ayuda a comprender el flujo general de renderizado en DX11.
+ * Las rutas de assets se tratan como *relativas al ejecutable* ubicado en bin/.
  */
+
 #pragma once
 #include "Prerequisites.h"
+
 #include "Window.h"
 #include "Device.h"
 #include "DeviceContext.h"
@@ -36,65 +38,32 @@
 
  /**
   * @class BaseApp
-  * @brief Clase núcleo que inicializa y gestiona el motor DirectX 11, la escena y la interfaz de usuario.
-  *
-  * @details
-  * Esta clase crea y mantiene todos los recursos principales:
-  * - Dispositivo y contexto DirectX 11.
-  * - Swap chain y buffers asociados.
-  * - Shaders, constantes y matrices de cámara.
-  * - Actores y plano de referencia.
-  * - Interfaz de usuario basada en ImGui u otro sistema.
-  *
-  * Además, administra el ciclo de vida de la aplicación, desde `run()` hasta `destroy()`.
+  * @brief Clase principal que gestiona la inicialización, ciclo de vida y renderizado de la aplicación.
   */
 class BaseApp {
 public:
     /** @brief Constructor por defecto. */
     BaseApp() = default;
-
     /** @brief Destructor por defecto. */
     ~BaseApp() = default;
 
-    /**
-     * @brief Inicializa el motor y sus recursos gráficos.
-     * @return `S_OK` si la inicialización fue exitosa; código de error en caso contrario.
-     *
-     * @note Configura el dispositivo, swap chain, render targets y recursos de escena.
-     */
+    /** @brief Inicializa el motor y todos los recursos necesarios. */
     HRESULT init();
-
-    /**
-     * @brief Actualiza la lógica de la aplicación por cuadro.
-     *
-     * @note Aquí se gestionan animaciones, entrada de usuario y lógica de juego.
-     */
+    /** @brief Actualiza la lógica de la escena en cada frame. */
     void update();
-
-    /**
-     * @brief Renderiza la escena.
-     *
-     * @note Limpia el back buffer, dibuja actores, y presenta el frame en pantalla.
-     */
+    /** @brief Renderiza el contenido de la escena. */
     void render();
-
-    /**
-     * @brief Libera todos los recursos gráficos y de sistema.
-     *
-     * @note Llamar antes de cerrar la aplicación para evitar fugas de memoria.
-     */
+    /** @brief Libera los recursos utilizados por el motor. */
     void destroy();
 
     /**
-     * @brief Ejecuta el ciclo principal de la aplicación.
+     * @brief Ejecuta el bucle principal de la aplicación (game loop).
      * @param hInstance Instancia de la aplicación.
-     * @param hPrevInstance Instancia previa (no usada en Win32 moderno).
+     * @param hPrevInstance Instancia previa (no usada).
      * @param lpCmdLine Argumentos de línea de comandos.
      * @param nCmdShow Estado inicial de la ventana.
-     * @param wndproc Procedimiento de ventana para manejar mensajes Win32.
+     * @param wndproc Procedimiento de ventana.
      * @return Código de salida de la aplicación.
-     *
-     * @note Contiene el **game loop**: procesamiento de mensajes + llamadas a `update()` y `render()`.
      */
     int run(HINSTANCE hInstance,
         HINSTANCE hPrevInstance,
@@ -103,55 +72,55 @@ public:
         WNDPROC wndproc);
 
 private:
-    // --- Núcleo DX11 ---
+    // --- Core DX11 ---
     Window          m_window;            ///< Ventana principal.
-    Device          m_device;            ///< Dispositivo DirectX 11 (crea recursos GPU).
-    DeviceContext   m_deviceContext;     ///< Contexto para enviar comandos a la GPU.
-    SwapChain       m_swapChain;         ///< Intercambio de buffers para presentar en pantalla.
+    Device          m_device;            ///< Dispositivo DirectX 11.
+    DeviceContext   m_deviceContext;     ///< Contexto de dispositivo.
+    SwapChain       m_swapChain;         ///< Intercambio de buffers (front/back).
 
     // BackBuffer + RTV
-    Texture         m_backBuffer;        ///< Textura del back buffer.
-    RenderTargetView m_renderTargetView; ///< Vista de render para el back buffer.
+    Texture           m_backBuffer;        ///< Textura de back buffer.
+    RenderTargetView  m_renderTargetView;  ///< Vista de renderizado (RTV).
 
     // Depth/Stencil
-    Texture          m_depthStencil;     ///< Textura para pruebas de profundidad/stencil.
-    DepthStencilView m_depthStencilView; ///< Vista asociada a la textura de profundidad.
+    Texture           m_depthStencil;      ///< Textura de profundidad/stencil.
+    DepthStencilView  m_depthStencilView;  ///< Vista de profundidad/stencil.
 
     // Viewport y Shaders
-    Viewport       m_viewport;           ///< Área de renderizado visible.
-    ShaderProgram  m_shaderProgram;      ///< Programa de shaders principal.
+    Viewport       m_viewport;           ///< Viewport principal.
+    ShaderProgram  m_shaderProgram;      ///< Programa de shaders activos.
 
-    // Buffers constantes para cámara
-    Buffer         m_neverChanges;       ///< Buffer constante (slot b0) con datos invariables.
-    Buffer         m_changeOnResize;     ///< Buffer constante (slot b1) con datos que cambian al redimensionar.
-    CBNeverChanges cbNeverChanges{};     ///< Datos de cámara/luz que casi no cambian.
-    CBChangeOnResize cbChangesOnResize{};///< Datos que cambian cuando la ventana cambia de tamaño.
+    // CBuffers de cámara
+    Buffer           m_neverChanges;       ///< Buffer constante slot b0 (parámetros estáticos de cámara).
+    Buffer           m_changeOnResize;     ///< Buffer constante slot b1 (parámetros que cambian con el tamaño de ventana).
+    CBNeverChanges   cbNeverChanges{};     ///< Datos que casi no cambian (posición de luz, etc.).
+    CBChangeOnResize cbChangesOnResize{};  ///< Datos que cambian al redimensionar.
 
     // Matrices de cámara
-    XMMATRIX       m_View;               ///< Matriz de vista (cámara).
-    XMMATRIX       m_Projection;         ///< Matriz de proyección (perspectiva).
+    XMMATRIX       m_View;               ///< Matriz de vista.
+    XMMATRIX       m_Projection;         ///< Matriz de proyección.
 
-    // Color de limpieza del back buffer
-    float          ClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f };
+    // Color de limpieza
+    float          ClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; ///< Color de fondo.
 
-    // Luz simple para iluminación básica
-    XMFLOAT4       m_LightPos{ 2.0f, 4.0f, -2.0f, 1.0f };
+    // Luz simple
+    XMFLOAT4       m_LightPos{ 2.0f, 4.0f, -2.0f, 1.0f }; ///< Posición de la luz principal.
 
     // Recursos
-    ModelLoader    m_modelLoader;        ///< Cargador de modelos 3D.
+    ModelLoader    m_modelLoader;        ///< Cargador de modelos (FBX/OBJ).
 
     // Plano de referencia
-    MeshComponent  planeMesh;            ///< Malla del plano base.
+    MeshComponent  planeMesh;            ///< Malla del plano.
     Texture        m_PlaneTexture;       ///< Textura del plano.
     EU::TSharedPointer<Actor> m_APlane;  ///< Actor que representa el plano.
 
-    // Interfaz de usuario y actores en escena
-    UserInterface  m_userInterface;      ///< Interfaz de usuario.
+    // Interfaz y actores
+    UserInterface  m_userInterface;      ///< Interfaz de usuario (ImGui).
     std::vector<EU::TSharedPointer<Actor>> m_actors; ///< Lista de actores en la escena.
 
-    // Parámetros opcionales de cámara orbital
-    float   m_camYawDeg = 0.0f;          ///< Ángulo de giro horizontal de cámara (grados).
-    float   m_camPitchDeg = 15.0f;       ///< Ángulo de inclinación vertical de cámara (grados).
-    float   m_camDistance = 10.0f;       ///< Distancia de la cámara al objetivo.
-    XMFLOAT3 m_camTarget = XMFLOAT3(0.0f, -5.0f, 0.0f); ///< Punto objetivo de la cámara.
+    // Parámetros de cámara orbital
+    float    m_camYawDeg = 0.0f;          ///< Ángulo de giro horizontal.
+    float    m_camPitchDeg = 15.0f;       ///< Ángulo de inclinación vertical.
+    float    m_camDistance = 10.0f;       ///< Distancia de la cámara al objetivo.
+    XMFLOAT3 m_camTarget = XMFLOAT3(0.0f, -5.0f, 0.0f); ///< Punto de enfoque de la cámara.
 };
