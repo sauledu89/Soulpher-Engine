@@ -118,6 +118,58 @@ Texture::init(Device device, const std::string& textureName, ExtensionType exten
         break;
     }
 
+    case JPG: {
+        m_textureName = textureName + ".jpg";
+        int width = 0, height = 0, channels = 0;
+
+        unsigned char* data = stbi_load(m_textureName.c_str(), &width, &height, &channels, 4);
+        if (!data) {
+            ERROR("Texture", "init",
+                ("Failed to load JPG texture: " + std::string(stbi_failure_reason())).c_str());
+            return E_FAIL;
+        }
+
+        D3D11_TEXTURE2D_DESC textureDesc = {};
+        textureDesc.Width              = width;
+        textureDesc.Height             = height;
+        textureDesc.MipLevels          = 1;
+        textureDesc.ArraySize          = 1;
+        textureDesc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
+        textureDesc.SampleDesc.Count   = 1;
+        textureDesc.SampleDesc.Quality = 0;
+        textureDesc.Usage              = D3D11_USAGE_DEFAULT;
+        textureDesc.BindFlags          = D3D11_BIND_SHADER_RESOURCE;
+        textureDesc.CPUAccessFlags     = 0;
+        textureDesc.MiscFlags          = 0;
+
+        D3D11_SUBRESOURCE_DATA initData = {};
+        initData.pSysMem     = data;
+        initData.SysMemPitch = width * 4;
+
+        hr = device.m_device->CreateTexture2D(&textureDesc, &initData, &m_texture);
+        stbi_image_free(data);
+
+        if (FAILED(hr)) {
+            ERROR("Texture", "init", "Failed to create texture from JPG data");
+            return hr;
+        }
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format                    = textureDesc.Format;
+        srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels       = 1;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+
+        hr = device.m_device->CreateShaderResourceView(m_texture, &srvDesc, &m_textureFromImg);
+        SafeRelease(reinterpret_cast<IUnknown*&>(m_texture));
+
+        if (FAILED(hr)) {
+            ERROR("Texture", "init", "Failed to create shader resource view for JPG texture");
+            return hr;
+        }
+        break;
+    }
+
     default:
         ERROR("Texture", "init", "Unsupported extension type");
         return E_INVALIDARG;

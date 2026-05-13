@@ -60,7 +60,7 @@ Actor::Actor(Device& device) {
     if (FAILED(hr)) { ERROR("Actor", classNameType.c_str(), "Failed to create new BlendState"); }
 
     // Shader para sombras
-    hr = m_shaderShadow.CreateShader(device, PIXEL_SHADER, "HybridEngine.fx");
+    hr = m_shaderShadow.CreateShader(device, PIXEL_SHADER, "Soulpher-Engine.fx");
     if (FAILED(hr)) {
         ERROR("Main", "InitDevice",
             ("Failed to initialize Shadow Shader. HRESULT: " + std::to_string(hr)).c_str());

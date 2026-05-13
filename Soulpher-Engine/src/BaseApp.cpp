@@ -149,69 +149,116 @@ HRESULT BaseApp::init()
         cbChangesOnResize.mProjection = XMMatrixTranspose(m_Projection);
     }
 
-    // 9) Actor: Martis Ashura King (FBX)
+    // 9) Actor: Martis Ashura King (FBX) — fallo no fatal, continúa sin el modelo
     {
         auto martis = EU::MakeShared<Actor>(m_device);
         if (martis.isNull()) {
-            ERROR("Main", "InitDevice", "Failed to create Martis Actor.");
-            return E_FAIL;
-        }
-
-        // FBX (ruta relativa a /bin)
-        const std::string kFBX =
-            "ModelsFBX\\martis-ashura-king\\Martis\\hero_asura.fbx";
-
-        if (!m_modelLoader.LoadFBXModel(kFBX) || m_modelLoader.meshes.empty()) {
-            ERROR("Main", "InitDevice", ("Failed to load FBX: " + kFBX).c_str());
-            return E_FAIL;
-        }
-
-        // Malla(s)
-        martis->setMesh(m_device, m_modelLoader.meshes);
-
-        // Textura difusa principal (PNG). Intentamos axl_D y, si falla, axl_wq_D.
-        Texture diffuse;
-        HRESULT th = diffuse.init(
-            m_device,
-            "ModelsFBX\\martis-ashura-king\\Martis\\axl_D",
-            PNG);
-
-        if (FAILED(th)) {
-            th = diffuse.init(
-                m_device,
-                "ModelsFBX\\martis-ashura-king\\Martis\\axl_wq_D",
-                PNG);
-        }
-
-        std::vector<Texture> mats;
-        if (SUCCEEDED(th)) {
-            mats.push_back(diffuse);
+            MESSAGE("Main", "InitDevice", "Warning: Failed to create Martis Actor — skipping.");
         }
         else {
-            // Fallback a textura por defecto si existe
-            Texture fallback;
-            if (SUCCEEDED(fallback.init(m_device, "Textures\\Default", DDS)) ||
-                SUCCEEDED(fallback.init(m_device, "Textures\\Default", PNG))) {
-                mats.push_back(fallback);
+            const std::string kFBX =
+                "ModelsFBX\\martis-ashura-king\\Martis\\hero_asura.fbx";
+
+            if (!m_modelLoader.LoadFBXModel(kFBX) || m_modelLoader.meshes.empty()) {
+                MESSAGE("Main", "InitDevice", ("Warning: FBX not found or empty: " + kFBX + " — skipping actor.").c_str());
             }
             else {
-                ERROR("Main", "InitDevice", "No diffuse texture found for Martis.");
+                // Malla(s)
+                martis->setMesh(m_device, m_modelLoader.meshes);
+
+                // Textura difusa principal (PNG). Intentamos axl_D y, si falla, axl_wq_D.
+                Texture diffuse;
+                HRESULT th = diffuse.init(
+                    m_device,
+                    "ModelsFBX\\martis-ashura-king\\Martis\\axl_D",
+                    PNG);
+
+                if (FAILED(th)) {
+                    th = diffuse.init(
+                        m_device,
+                        "ModelsFBX\\martis-ashura-king\\Martis\\axl_wq_D",
+                        PNG);
+                }
+
+                std::vector<Texture> mats;
+                if (SUCCEEDED(th)) {
+                    mats.push_back(diffuse);
+                }
+                else {
+                    // Fallback a textura por defecto si existe
+                    Texture fallback;
+                    if (SUCCEEDED(fallback.init(m_device, "Textures\\Default", DDS)) ||
+                        SUCCEEDED(fallback.init(m_device, "Textures\\Default", PNG))) {
+                        mats.push_back(fallback);
+                    }
+                    else {
+                        MESSAGE("Main", "InitDevice", "Warning: No diffuse texture found for Martis — rendering without texture.");
+                    }
+                }
+                martis->setTextures(mats);
+
+                // Transform (FBX suele venir en cm; escala típica)
+                martis->getComponent<Transform>()->setTransform(
+                    EU::Vector3(-0.50f, -5.00f, 0.00f), // Position
+                    EU::Vector3(-1.50f,  0.00f, 0.00f), // Rotation (grados)
+                    EU::Vector3( 5.00f,  5.00f, 5.00f)  // Scale
+                );
+                martis->setCastShadow(false);
+
+                m_actors.push_back(martis);
             }
         }
-        martis->setTextures(mats);
-
-        // Transform (FBX suele venir en cm; escala típica)
-        martis->getComponent<Transform>()->setTransform(
-            EU::Vector3(-0.50f, -5.00f, 0.00f), // Position
-            EU::Vector3(-1.50f, 0.00f, 0.00f), // Rotation (grados)
-            EU::Vector3(5.00f, 5.00f, 5.00f)  // Scale
-        );
-        martis->setCastShadow(false);
-
-        m_actors.push_back(martis);
     }
 
-    // 10) ACTOR: Plano simple (suelo con piedra.jpg)
+    // 10) Actor: Kirby (FBX) — fallo no fatal, continúa sin el modelo
+    {
+        m_modelLoader.meshes.clear();
+
+        auto kirby = EU::MakeShared<Actor>(m_device);
+        if (kirby.isNull()) {
+            MESSAGE("Main", "InitDevice", "Warning: Failed to create Kirby Actor — skipping.");
+        }
+        else {
+            const std::string kFBX = "ModelsFBX\\kirby\\KirbyTest.fbx";
+
+            if (!m_modelLoader.LoadFBXModel(kFBX) || m_modelLoader.meshes.empty()) {
+                MESSAGE("Main", "InitDevice", ("Warning: FBX not found or empty: " + kFBX + " — skipping actor.").c_str());
+            }
+            else {
+                kirby->setMesh(m_device, m_modelLoader.meshes);
+
+                Texture kirbyDiffuse;
+                HRESULT th = kirbyDiffuse.init(m_device, "ModelsFBX\\kirby\\baking", PNG);
+
+                std::vector<Texture> mats;
+                if (SUCCEEDED(th)) {
+                    mats.push_back(kirbyDiffuse);
+                }
+                else {
+                    Texture fallback;
+                    if (SUCCEEDED(fallback.init(m_device, "Textures\\Default", DDS)) ||
+                        SUCCEEDED(fallback.init(m_device, "Textures\\Default", PNG))) {
+                        mats.push_back(fallback);
+                    }
+                    else {
+                        MESSAGE("Main", "InitDevice", "Warning: No texture found for Kirby — rendering without texture.");
+                    }
+                }
+                kirby->setTextures(mats);
+
+                kirby->getComponent<Transform>()->setTransform(
+                    EU::Vector3( 3.00f, -5.00f,  0.00f), // Position
+                    EU::Vector3( 0.00f,  0.00f,  0.00f), // Rotation (grados)
+                    EU::Vector3( 1.00f,  1.00f,  1.00f)  // Scale
+                );
+                kirby->setCastShadow(false);
+
+                m_actors.push_back(kirby);
+            }
+        }
+    }
+
+    // 11) ACTOR: Plano simple (suelo con piedra.jpg)
     {
         const float kSize = 20.0f; // mitad del tamaño (=> 40x40)
         const float kTiling = 6.0f;  // repetición UV
@@ -240,14 +287,10 @@ HRESULT BaseApp::init()
         std::vector<MeshComponent> planeMeshes{ planeMesh };
         m_APlane->setMesh(m_device, planeMeshes);
 
-        // Textura del piso: ModelsFBX\martis-ashura-king\Martis\piedra.jpg (con fallback a .png / Default)
-        HRESULT hrTx = m_PlaneTexture.init(
-            m_device,
-            "ModelsFBX\\martis-ashura-king\\Martis\\piedra",
-            JPG
-        );
+        // Textura del piso: ModelsFBX\piedra → fallback Textures\Default
+        HRESULT hrTx = m_PlaneTexture.init(m_device, "ModelsFBX\\piedra", JPG);
         if (FAILED(hrTx)) {
-            hrTx = m_PlaneTexture.init(m_device, "ModelsFBX\\martis-ashura-king\\Martis\\piedra", PNG);
+            hrTx = m_PlaneTexture.init(m_device, "ModelsFBX\\piedra", PNG);
         }
         if (FAILED(hrTx)) {
             if (FAILED(m_PlaneTexture.init(m_device, "Textures\\Default", DDS)))
@@ -270,10 +313,10 @@ HRESULT BaseApp::init()
         m_actors.push_back(m_APlane);
     }
 
-    // 11) Luz
+    // 12) Luz
     m_LightPos = XMFLOAT4(2.0f, 4.0f, -2.0f, 1.0f);
 
-    // 12) ImGui (al final del init gráfico)
+    // 13) ImGui (al final del init gráfico)
     m_userInterface.init(
         m_window.m_hWnd,
         m_device.m_device,

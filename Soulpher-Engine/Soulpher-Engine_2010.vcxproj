@@ -31,7 +31,7 @@
     <ProjectGuid>{D29C6982-A589-4081-89B1-91E78D7C41E2}</ProjectGuid>
     <RootNamespace>Soulpher-Engine</RootNamespace>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -161,11 +161,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <AdditionalIncludeDirectories>./include/
-(AdditionalIncludeDirectories)
-C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\imgui-docking-znly-docking
-./include/fbx/
-C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\imgui-docking-znly-docking\backend;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;$(ProjectDir)include\fbx;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;FBXSDK_SHARED;_DEBUG;DEBUG;PROFILE;_WINDOWS;D3DXFX_LARGEADDRESS_HANDLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
@@ -212,7 +208,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FloatingPointModel>Fast</FloatingPointModel>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;./include/fbx/;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;$(ProjectDir)include/fbx/$(ProjectDir)ImGui\imgui-docking-znly-docking\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;$(ProjectDir)include\fbx;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;FBXSDK_SHARED;_DEBUG;DEBUG;PROFILE;_WINDOWS;D3DXFX_LARGEADDRESS_HANDLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -242,8 +238,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug\libfbxsdk.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)\include</AdditionalIncludeDirectories>
@@ -260,11 +255,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <AdditionalIncludeDirectories>./include/
-(AdditionalIncludeDirectories)
-C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\imgui-docking-znly-docking
-./include/fbx/
-C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\imgui-docking-znly-docking\backend;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;$(ProjectDir)include\fbx;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;FBXSDK_SHARED;NDEBUG;_WINDOWS;D3DXFX_LARGEADDRESS_HANDLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -312,7 +303,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FloatingPointModel>Fast</FloatingPointModel>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;./include/fbx/;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;$(ProjectDir)include/fbx/$(ProjectDir)ImGui\imgui-docking-znly-docking\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;$(ProjectDir)include\fbx;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;FBXSDK_SHARED;NDEBUG;_WINDOWS;D3DXFX_LARGEADDRESS_HANDLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -343,8 +334,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release\libfbxsdk.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)\include</AdditionalIncludeDirectories>
@@ -361,11 +351,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <AdditionalIncludeDirectories>./include/
-(AdditionalIncludeDirectories)
-C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\imgui-docking-znly-docking
-./include/fbx/
-C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\imgui-docking-znly-docking\backend;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;$(ProjectDir)include\fbx;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;FBXSDK_SHARED;NDEBUG;PROFILE;_WINDOWS;D3DXFX_LARGEADDRESS_HANDLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -413,7 +399,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FloatingPointModel>Fast</FloatingPointModel>
       <ExceptionHandling>Sync</ExceptionHandling>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;./include/fbx/;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;$(ProjectDir)include/fbx/$(ProjectDir)ImGui\imgui-docking-znly-docking\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)ImGui\imgui-docking-znly-docking;$(ProjectDir)include\fbx;$(ProjectDir)ImGui\imgui-docking-znly-docking\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;FBXSDK_SHARED;NDEBUG;PROFILE;_WINDOWS;D3DXFX_LARGEADDRESS_HANDLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -444,8 +430,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
       </Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release\libfbxsdk.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)\include</AdditionalIncludeDirectories>
@@ -478,14 +463,7 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
     <ClCompile Include="src\ShaderProgram.cpp" />
     <ClCompile Include="src\SwapChain.cpp" />
     <ClCompile Include="src\Texture.cpp" />
-    <ClCompile Include="src\UserInterface.cpp">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(DXSDK_DIR)Samples\C++\DXUT\Core$(DXSDK_DIR)Samples\C++\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(DXSDK_DIR)Samples\C++\DXUT\Core$(DXSDK_DIR)Samples\C++\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(DXSDK_DIR)Samples\C++\DXUT\Core$(DXSDK_DIR)Samples\C++\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(DXSDK_DIR)Samples\C++\DXUT\Core$(DXSDK_DIR)Samples\C++\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(DXSDK_DIR)Samples\C++\DXUT\Core$(DXSDK_DIR)Samples\C++\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(DXSDK_DIR)Samples\C++\DXUT\Core$(DXSDK_DIR)Samples\C++\DXUT\Optional;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
+    <ClCompile Include="src\UserInterface.cpp" />
     <ClCompile Include="src\Viewport.cpp" />
     <ClCompile Include="src\Window.cpp" />
   </ItemGroup>
@@ -529,7 +507,9 @@ C:\Users\chalu\OneDrive\Documentos\GitHub\Soulpher-Engine\Soulpher-Engine\Imgui\
     <ResourceCompile Include="Soulpher-Engine.rc" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="bin\Soulpher-Engine.fx" />
+    <FxCompile Include="bin\Soulpher-Engine.fx">
+  <ExcludedFromBuild>true</ExcludedFromBuild>
+</FxCompile>
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

@@ -24,7 +24,7 @@
 #pragma once
 #include "Prerequisites.h"
 #include "imgui.h"
-#include <imgui_internal.h>
+#include "imgui_internal.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
@@ -113,9 +113,6 @@ public:
 
     /** @brief Aplica estilo gris neutro. */
     void greyStyle();
-
-    /** @brief Aplica estilo similar a GameMaker Studio. */
-    void GameMakerStyle();
 
     /** @brief Aplica estilo inspirado en Visual Studio. */
     void visualStudioStyle();

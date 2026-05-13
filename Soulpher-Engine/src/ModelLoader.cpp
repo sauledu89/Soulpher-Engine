@@ -3,19 +3,19 @@
  * @brief Carga y procesamiento de modelos 3D (OBJ/FBX), junto con materiales y texturas.
  *
  * @details
- * Este módulo centraliza toda la lógica necesaria para importar modelos 3D
+ * Este mï¿½dulo centraliza toda la lï¿½gica necesaria para importar modelos 3D
  * desde formatos comunes en videojuegos como:
- *  - **OBJ** (Wavefront): Ligero, ampliamente usado, ideal para geometría estática.
- *  - **FBX** (Autodesk): Complejo, soporta jerarquías, animaciones y materiales avanzados.
+ *  - **OBJ** (Wavefront): Ligero, ampliamente usado, ideal para geometrï¿½a estï¿½tica.
+ *  - **FBX** (Autodesk): Complejo, soporta jerarquï¿½as, animaciones y materiales avanzados.
  *
  * Las funciones se encargan de:
  *  1. Leer el archivo desde disco.
- *  2. Procesar vértices, índices y coordenadas UV.
- *  3. Extraer información de materiales y texturas.
+ *  2. Procesar vï¿½rtices, ï¿½ndices y coordenadas UV.
+ *  3. Extraer informaciï¿½n de materiales y texturas.
  *  4. Guardar el resultado en `MeshComponent` para que el motor lo renderice.
  *
  * @note
- * - Para OBJ se utiliza la librería externa `OBJ_Loader`.
+ * - Para OBJ se utiliza la librerï¿½a externa `OBJ_Loader`.
  * - Para FBX se emplea el **Autodesk FBX SDK**.
  */
 
@@ -29,7 +29,7 @@
   * @brief Carga un modelo en formato OBJ.
   *
   * @param filePath Ruta del archivo OBJ a cargar.
-  * @return MeshComponent Malla con vértices, índices y coordenadas UV cargadas.
+  * @return MeshComponent Malla con vï¿½rtices, ï¿½ndices y coordenadas UV cargadas.
   *
   * @details
   * - Usa `objl::Loader` para interpretar el formato OBJ.
@@ -41,7 +41,7 @@ MeshComponent ModelLoader::LoadOBJModel(const std::string& filePath) {
     objl::Loader loader;
 
     if (!loader.LoadFile(filePath)) {
-        return mesh; // Devuelve vacío si falla
+        return mesh; // Devuelve vacï¿½o si falla
     }
 
     mesh.m_name = filePath;
@@ -51,7 +51,7 @@ MeshComponent ModelLoader::LoadOBJModel(const std::string& filePath) {
 
     // Reservar memoria exacta para evitar reallocaciones
     mesh.m_vertex.resize(numVertices);
-    mesh.m_index = std::move(loader.LoadedIndices); // Mover directamente (optimización)
+    mesh.m_index = std::move(loader.LoadedIndices); // Mover directamente (optimizaciï¿½n)
 
     for (unsigned int i = 0; i < numVertices; ++i) {
         const auto& v = loader.LoadedVertices[i];
@@ -68,16 +68,16 @@ MeshComponent ModelLoader::LoadOBJModel(const std::string& filePath) {
 }
 
 // ============================================================================
-//  Inicialización del FBX Manager
+//  Inicializaciï¿½n del FBX Manager
 // ============================================================================
 /**
  * @brief Inicializa el administrador principal del Autodesk FBX SDK.
- * @return true si la inicialización fue exitosa, false en caso contrario.
+ * @return true si la inicializaciï¿½n fue exitosa, false en caso contrario.
  *
  * @details
- * - Crea el `FbxManager` que controla toda la interacción con FBX.
- * - Configura `FbxIOSettings` para definir opciones de importación/exportación.
- * - Crea una escena vacía (`FbxScene`) donde se almacenará el modelo importado.
+ * - Crea el `FbxManager` que controla toda la interacciï¿½n con FBX.
+ * - Configura `FbxIOSettings` para definir opciones de importaciï¿½n/exportaciï¿½n.
+ * - Crea una escena vacï¿½a (`FbxScene`) donde se almacenarï¿½ el modelo importado.
  */
 bool ModelLoader::InitializeFBXManager() {
     lSdkManager = FbxManager::Create();
@@ -110,7 +110,7 @@ bool ModelLoader::InitializeFBXManager() {
  * @brief Carga un modelo en formato FBX.
  *
  * @param filePath Ruta del archivo FBX a cargar.
- * @return true si se cargó correctamente, false si falló.
+ * @return true si se cargï¿½ correctamente, false si fallï¿½.
  *
  * @details
  * 1. Inicializa el SDK de FBX.
@@ -146,6 +146,17 @@ bool ModelLoader::LoadFBXModel(const std::string& filePath) {
         }
 
         lImporter->Destroy();
+
+        // Convertir unidades de la escena a metros (el engine trabaja en metros).
+        // Cubre casos donde el FBX fue exportado en cm, mm u otras unidades.
+        FbxSystemUnit sceneUnit = lScene->GetGlobalSettings().GetSystemUnit();
+        if (sceneUnit != FbxSystemUnit::m) {
+            FbxSystemUnit::m.ConvertScene(lScene);
+        }
+
+        // Triangular toda la escena antes de procesar (quads y n-gons a triangulos)
+        FbxGeometryConverter converter(lSdkManager);
+        converter.Triangulate(lScene, true);
 
         FbxNode* lRootNode = lScene->GetRootNode();
         if (lRootNode) {
@@ -197,68 +208,79 @@ void ModelLoader::ProcessFBXNode(FbxNode* node) {
  * @details
  * 1. Extrae posiciones desde los control points.
  * 2. Extrae coordenadas UV dependiendo del modo de mapeo.
- * 3. Extrae índices de los polígonos.
+ * 3. Extrae ï¿½ndices de los polï¿½gonos.
  * 4. Crea un `MeshComponent` y lo almacena en `meshes`.
  */
 void ModelLoader::ProcessFBXMesh(FbxNode* node) {
     FbxMesh* mesh = node->GetMesh();
     if (!mesh) return;
 
+    // Transform global del nodo: coloca cada pieza en su posicion/orientacion correcta en el mundo
+    FbxAMatrix globalTransform = node->EvaluateGlobalTransform();
+    FbxVector4* controlPoints  = mesh->GetControlPoints();
+
+    FbxGeometryElementUV* uvElement = (mesh->GetElementUVCount() > 0)
+        ? mesh->GetElementUV(0) : nullptr;
+
+    FbxGeometryElement::EMappingMode   uvMapping   = FbxGeometryElement::eNone;
+    FbxGeometryElement::EReferenceMode uvReference = FbxGeometryElement::eDirect;
+    if (uvElement) {
+        uvMapping   = uvElement->GetMappingMode();
+        uvReference = uvElement->GetReferenceMode();
+    }
+
     std::vector<SimpleVertex> vertices;
     std::vector<unsigned int> indices;
 
-    // Posiciones
-    for (int i = 0; i < mesh->GetControlPointsCount(); i++) {
-        SimpleVertex vertex;
-        FbxVector4* controlPoint = mesh->GetControlPoints();
-        vertex.Pos = XMFLOAT3((float)controlPoint[i][0], (float)controlPoint[i][1], (float)controlPoint[i][2]);
-        vertices.push_back(vertex);
-    }
+    // Un vertice por polygon-vertex para soportar UVs discontinuas entre poligonos.
+    // La triangulacion previa garantiza polySize == 3 siempre.
+    int polyVertCounter = 0;
+    for (int polyIndex = 0; polyIndex < mesh->GetPolygonCount(); polyIndex++) {
+        int polySize = mesh->GetPolygonSize(polyIndex);
+        for (int vertIndex = 0; vertIndex < polySize; vertIndex++) {
+            int cpIndex = mesh->GetPolygonVertex(polyIndex, vertIndex);
 
-    // Coordenadas UV
-    if (mesh->GetElementUVCount() > 0) {
-        FbxGeometryElementUV* uvElement = mesh->GetElementUV(0);
-        FbxGeometryElement::EMappingMode mappingMode = uvElement->GetMappingMode();
-        FbxGeometryElement::EReferenceMode referenceMode = uvElement->GetReferenceMode();
-        int polyIndexCounter = 0;
+            // Posicion en espacio mundo con transform global aplicado
+            FbxVector4 worldPos = globalTransform.MultT(controlPoints[cpIndex]);
 
-        for (int polyIndex = 0; polyIndex < mesh->GetPolygonCount(); polyIndex++) {
-            int polySize = mesh->GetPolygonSize(polyIndex);
-            for (int vertIndex = 0; vertIndex < polySize; vertIndex++) {
-                int controlPointIndex = mesh->GetPolygonVertex(polyIndex, vertIndex);
+            SimpleVertex vertex;
+            vertex.Pos = XMFLOAT3((float)worldPos[0], (float)worldPos[1], (float)worldPos[2]);
+
+            // UV: maneja eByControlPoint y eByPolygonVertex x eDirect / eIndexToDirect
+            if (uvElement) {
                 int uvIndex = -1;
 
-                if (mappingMode == FbxGeometryElement::eByControlPoint) {
-                    uvIndex = (referenceMode == FbxGeometryElement::eDirect) ?
-                        controlPointIndex :
-                        uvElement->GetIndexArray().GetAt(controlPointIndex);
+                if (uvMapping == FbxGeometryElement::eByControlPoint) {
+                    uvIndex = (uvReference == FbxGeometryElement::eDirect)
+                        ? cpIndex
+                        : uvElement->GetIndexArray().GetAt(cpIndex);
                 }
-                else if (mappingMode == FbxGeometryElement::eByPolygonVertex) {
-                    uvIndex = uvElement->GetIndexArray().GetAt(polyIndexCounter++);
+                else if (uvMapping == FbxGeometryElement::eByPolygonVertex) {
+                    uvIndex = (uvReference == FbxGeometryElement::eDirect)
+                        ? polyVertCounter
+                        : uvElement->GetIndexArray().GetAt(polyVertCounter);
                 }
 
-                if (uvIndex != -1) {
+                if (uvIndex >= 0 && uvIndex < uvElement->GetDirectArray().GetCount()) {
                     FbxVector2 uv = uvElement->GetDirectArray().GetAt(uvIndex);
-                    vertices[controlPointIndex].Tex = XMFLOAT2((float)uv[0], -(float)uv[1]);
+                    vertex.Tex = XMFLOAT2((float)uv[0], 1.0f - (float)uv[1]);
                 }
             }
+
+            indices.push_back((unsigned int)vertices.size());
+            vertices.push_back(vertex);
+            polyVertCounter++;
         }
     }
 
-    // Índices
-    for (int i = 0; i < mesh->GetPolygonCount(); i++) {
-        for (int j = 0; j < mesh->GetPolygonSize(i); j++) {
-            indices.push_back(mesh->GetPolygonVertex(i, j));
-        }
-    }
+    // indices ya construidos en el loop anterior (uno por polygon-vertex)
 
     MeshComponent meshData;
-    meshData.m_name = node->GetName();
-    meshData.m_vertex = vertices;
-    meshData.m_index = indices;
-    meshData.m_numVertex = vertices.size();
-    meshData.m_numIndex = indices.size();
-
+    meshData.m_name      = node->GetName();
+    meshData.m_vertex    = vertices;
+    meshData.m_index     = indices;
+    meshData.m_numVertex = (unsigned int)vertices.size();
+    meshData.m_numIndex  = (unsigned int)indices.size();
     meshes.push_back(meshData);
 }
 
