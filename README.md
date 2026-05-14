@@ -1,8 +1,10 @@
 # Soulpher Engine
 
-Motor gráfico modular desarrollado desde cero en **DirectX 11** como parte del curso de **Arquitectura de Motores Gráficos** impartido por el profesor **Roberto Charretón Kaplun**.
+Motor gráfico modular desarrollado desde cero en **DirectX 11** como parte del curso de **Arquitectura de Motores Gráficos** y **Programación de Materiales** impartidas por el profesor **Roberto Charretón Kaplun**.
 
 Implementa un pipeline gráfico estructurado con carga de modelos FBX, sistema de actores ECS, cámara orbital interactiva e interfaz de usuario con **Dear ImGui**.
+
+<img width="1179" height="992" alt="image" src="https://github.com/user-attachments/assets/0e4a3658-3327-4eee-a05a-296b82831d47" />
 
 ---
 
