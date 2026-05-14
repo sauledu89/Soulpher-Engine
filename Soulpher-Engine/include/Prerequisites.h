@@ -78,7 +78,13 @@
 	*
 	* @note Este es un formato mínimo para renderizado básico con texturas.
 	*/
-struct SimpleVertex { XMFLOAT3 Pos; XMFLOAT2 Tex; };
+struct SimpleVertex {
+    XMFLOAT3 Pos;
+    XMFLOAT3 Normal;
+    XMFLOAT3 Tangent;
+    XMFLOAT3 Bitangent;
+    XMFLOAT2 Tex;
+};
 
 /**
  * @struct CBNeverChanges

@@ -56,8 +56,11 @@ MeshComponent ModelLoader::LoadOBJModel(const std::string& filePath) {
     for (unsigned int i = 0; i < numVertices; ++i) {
         const auto& v = loader.LoadedVertices[i];
         mesh.m_vertex[i] = SimpleVertex{
-            { v.Position.X, v.Position.Y, v.Position.Z },
-            { v.TextureCoordinate.X, 1.0f - v.TextureCoordinate.Y }
+            XMFLOAT3(v.Position.X, v.Position.Y, v.Position.Z),
+            XMFLOAT3(0.0f, 1.0f, 0.0f),   // Normal — OBJ loader no la expone; placeholder
+            XMFLOAT3(1.0f, 0.0f, 0.0f),   // Tangent
+            XMFLOAT3(0.0f, 0.0f, 1.0f),   // Bitangent
+            XMFLOAT2(v.TextureCoordinate.X, 1.0f - v.TextureCoordinate.Y)
         };
     }
 
@@ -147,14 +150,7 @@ bool ModelLoader::LoadFBXModel(const std::string& filePath) {
 
         lImporter->Destroy();
 
-        // Convertir unidades de la escena a metros (el engine trabaja en metros).
-        // Cubre casos donde el FBX fue exportado en cm, mm u otras unidades.
-        FbxSystemUnit sceneUnit = lScene->GetGlobalSettings().GetSystemUnit();
-        if (sceneUnit != FbxSystemUnit::m) {
-            FbxSystemUnit::m.ConvertScene(lScene);
-        }
-
-        // Triangular toda la escena antes de procesar (quads y n-gons a triangulos)
+        // Triangular toda la escena (quads y n-gons → triangulos).
         FbxGeometryConverter converter(lSdkManager);
         converter.Triangulate(lScene, true);
 
@@ -215,73 +211,198 @@ void ModelLoader::ProcessFBXMesh(FbxNode* node) {
     FbxMesh* mesh = node->GetMesh();
     if (!mesh) return;
 
-    // Transform global del nodo: coloca cada pieza en su posicion/orientacion correcta en el mundo
-    FbxAMatrix globalTransform = node->EvaluateGlobalTransform();
-    FbxVector4* controlPoints  = mesh->GetControlPoints();
-
-    FbxGeometryElementUV* uvElement = (mesh->GetElementUVCount() > 0)
-        ? mesh->GetElementUV(0) : nullptr;
-
-    FbxGeometryElement::EMappingMode   uvMapping   = FbxGeometryElement::eNone;
-    FbxGeometryElement::EReferenceMode uvReference = FbxGeometryElement::eDirect;
-    if (uvElement) {
-        uvMapping   = uvElement->GetMappingMode();
-        uvReference = uvElement->GetReferenceMode();
+    // Generar normales si el mesh no las tiene (garantia antes de leer elementos).
+    if (mesh->GetElementNormalCount() == 0) {
+        mesh->GenerateNormals(true, true);
     }
 
-    std::vector<SimpleVertex> vertices;
-    std::vector<unsigned int> indices;
-
-    // Un vertice por polygon-vertex para soportar UVs discontinuas entre poligonos.
-    // La triangulacion previa garantiza polySize == 3 siempre.
-    int polyVertCounter = 0;
-    for (int polyIndex = 0; polyIndex < mesh->GetPolygonCount(); polyIndex++) {
-        int polySize = mesh->GetPolygonSize(polyIndex);
-        for (int vertIndex = 0; vertIndex < polySize; vertIndex++) {
-            int cpIndex = mesh->GetPolygonVertex(polyIndex, vertIndex);
-
-            // Posicion en espacio mundo con transform global aplicado
-            FbxVector4 worldPos = globalTransform.MultT(controlPoints[cpIndex]);
-
-            SimpleVertex vertex;
-            vertex.Pos = XMFLOAT3((float)worldPos[0], (float)worldPos[1], (float)worldPos[2]);
-
-            // UV: maneja eByControlPoint y eByPolygonVertex x eDirect / eIndexToDirect
-            if (uvElement) {
-                int uvIndex = -1;
-
-                if (uvMapping == FbxGeometryElement::eByControlPoint) {
-                    uvIndex = (uvReference == FbxGeometryElement::eDirect)
-                        ? cpIndex
-                        : uvElement->GetIndexArray().GetAt(cpIndex);
-                }
-                else if (uvMapping == FbxGeometryElement::eByPolygonVertex) {
-                    uvIndex = (uvReference == FbxGeometryElement::eDirect)
-                        ? polyVertCounter
-                        : uvElement->GetIndexArray().GetAt(polyVertCounter);
-                }
-
-                if (uvIndex >= 0 && uvIndex < uvElement->GetDirectArray().GetCount()) {
-                    FbxVector2 uv = uvElement->GetDirectArray().GetAt(uvIndex);
-                    vertex.Tex = XMFLOAT2((float)uv[0], 1.0f - (float)uv[1]);
-                }
-            }
-
-            indices.push_back((unsigned int)vertices.size());
-            vertices.push_back(vertex);
-            polyVertCounter++;
+    // Identificar el primer UV set para generacion de tangentes.
+    const char* uvSetName = nullptr;
+    {
+        FbxStringList uvSets;
+        mesh->GetUVSetNames(uvSets);
+        if (uvSets.GetCount() > 0) {
+            uvSetName = uvSets[0];
         }
     }
 
-    // indices ya construidos en el loop anterior (uno por polygon-vertex)
+    // Generar tangentes/bitangentes si no existen.
+    if (mesh->GetElementTangentCount() == 0 && uvSetName) {
+        mesh->GenerateTangentsData(uvSetName);
+    }
+
+    // -- Elementos de geometria --
+    const FbxGeometryElementUV*       uvElem  = mesh->GetElementUVCount()       > 0 ? mesh->GetElementUV(0)       : nullptr;
+    const FbxGeometryElementTangent*  tanElem = mesh->GetElementTangentCount()  > 0 ? mesh->GetElementTangent(0)  : nullptr;
+    const FbxGeometryElementBinormal* binElem = mesh->GetElementBinormalCount() > 0 ? mesh->GetElementBinormal(0) : nullptr;
+
+    // -- Transforms de nodo --
+    // globalTransform lleva cada pieza (cabeza, pies, manos...) a su posicion en escena,
+    // ensamblando correctamente el modelo. El Actor::Transform posiciona el conjunto en el mundo.
+    // normalTransform = (globalTransform^{-1})^T corrige normales ante escalados no uniformes.
+    FbxAMatrix globalTransform = node->EvaluateGlobalTransform();
+    FbxAMatrix normalTransform = globalTransform.Inverse().Transpose();
+
+    // Helper: leer elemento UV por control-point o polygon-vertex index.
+    auto readUV = [&](int cpIdx, int pvIdx) -> FbxVector2 {
+        if (!uvElem) return FbxVector2(0.0, 0.0);
+        using E = FbxGeometryElement;
+        if (uvElem->GetMappingMode() == E::eByControlPoint) {
+            int idx = (uvElem->GetReferenceMode() == E::eIndexToDirect)
+                ? uvElem->GetIndexArray().GetAt(cpIdx) : cpIdx;
+            return uvElem->GetDirectArray().GetAt(idx);
+        }
+        // eByPolygonVertex
+        int idx = (uvElem->GetReferenceMode() == E::eIndexToDirect)
+            ? uvElem->GetIndexArray().GetAt(pvIdx) : pvIdx;
+        return uvElem->GetDirectArray().GetAt(idx);
+    };
+
+    // Helper: leer elemento FbxVector4 (tangente o bitangente).
+    auto readV4 = [&](auto* elem, int cpIdx, int pvIdx) -> FbxVector4 {
+        if (!elem) return FbxVector4(0.0, 0.0, 0.0, 0.0);
+        using E = FbxGeometryElement;
+        if (elem->GetMappingMode() == E::eByControlPoint) {
+            int idx = (elem->GetReferenceMode() == E::eIndexToDirect)
+                ? elem->GetIndexArray().GetAt(cpIdx) : cpIdx;
+            return elem->GetDirectArray().GetAt(idx);
+        }
+        int idx = (elem->GetReferenceMode() == E::eIndexToDirect)
+            ? elem->GetIndexArray().GetAt(pvIdx) : pvIdx;
+        return elem->GetDirectArray().GetAt(idx);
+    };
+
+    std::vector<SimpleVertex> vertices;
+    std::vector<unsigned int> indices;
+    vertices.reserve(static_cast<size_t>(mesh->GetPolygonCount()) * 3);
+    indices.reserve(static_cast<size_t>(mesh->GetPolygonCount()) * 3);
+
+    for (int p = 0; p < mesh->GetPolygonCount(); ++p) {
+        const int polySize = mesh->GetPolygonSize(p);
+        for (int v = 0; v < polySize; ++v) {
+            const int cpIndex = mesh->GetPolygonVertex(p, v);
+            const int pvIndex = mesh->GetPolygonVertexIndex(p) + v;
+
+            SimpleVertex out{};
+
+            // Posicion: globalTransform ensambla la pieza en el espacio del modelo.
+            FbxVector4 localPos = mesh->GetControlPointAt(cpIndex);
+            FbxVector4 worldPos = globalTransform.MultT(localPos);
+            out.Pos = XMFLOAT3((float)worldPos[0], (float)worldPos[1], (float)worldPos[2]);
+
+            // Normal por polygon-vertex (mas precisa que por control point) + normalTransform.
+            FbxVector4 N(0.0, 1.0, 0.0, 0.0);
+            mesh->GetPolygonVertexNormal(p, v, N);
+            FbxVector4 worldN = normalTransform.MultT(N);
+            worldN.Normalize();
+            out.Normal = XMFLOAT3((float)worldN[0], (float)worldN[1], (float)worldN[2]);
+
+            // UV: GetTextureUVIndex es mas robusto para eByPolygonVertex directo.
+            if (uvElem && uvSetName) {
+                int uvIdx = mesh->GetTextureUVIndex(p, v);
+                FbxVector2 uv = (uvIdx >= 0)
+                    ? uvElem->GetDirectArray().GetAt(uvIdx)
+                    : readUV(cpIndex, pvIndex);
+                out.Tex = XMFLOAT2((float)uv[0], 1.0f - (float)uv[1]);
+            }
+
+            // Tangente y bitangente transformadas igual que la normal.
+            if (tanElem) {
+                FbxVector4 T  = readV4(tanElem, cpIndex, pvIndex);
+                FbxVector4 wT = normalTransform.MultT(T);
+                out.Tangent = XMFLOAT3((float)wT[0], (float)wT[1], (float)wT[2]);
+            }
+            if (binElem) {
+                FbxVector4 B  = readV4(binElem, cpIndex, pvIndex);
+                FbxVector4 wB = normalTransform.MultT(B);
+                out.Bitangent = XMFLOAT3((float)wB[0], (float)wB[1], (float)wB[2]);
+            }
+
+            indices.push_back(static_cast<unsigned int>(vertices.size()));
+            vertices.push_back(out);
+        }
+    }
+
+    // -- Detectar y corregir winding en geometria espejada --
+    // Un determinante de escala negativo en el globalTransform indica geometria reflejada.
+    {
+        FbxVector4 S = globalTransform.GetS();
+        const bool mirrored = (S[0] * S[1] * S[2]) < 0.0;
+        if (mirrored) {
+            for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+                std::swap(indices[i + 1], indices[i + 2]);
+            }
+        }
+    }
+
+    // -- Generar tangentes por CPU si el FBX no las tenia --
+    if (!tanElem) {
+        auto add3 = [](XMFLOAT3& a, const XMFLOAT3& b) {
+            a.x += b.x; a.y += b.y; a.z += b.z;
+        };
+        for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+            SimpleVertex& v0 = vertices[indices[i]];
+            SimpleVertex& v1 = vertices[indices[i + 1]];
+            SimpleVertex& v2 = vertices[indices[i + 2]];
+
+            XMFLOAT3 e1 = { v1.Pos.x - v0.Pos.x, v1.Pos.y - v0.Pos.y, v1.Pos.z - v0.Pos.z };
+            XMFLOAT3 e2 = { v2.Pos.x - v0.Pos.x, v2.Pos.y - v0.Pos.y, v2.Pos.z - v0.Pos.z };
+            float du1 = v1.Tex.x - v0.Tex.x, dv1 = v1.Tex.y - v0.Tex.y;
+            float du2 = v2.Tex.x - v0.Tex.x, dv2 = v2.Tex.y - v0.Tex.y;
+            float denom = du1 * dv2 - du2 * dv1;
+            float r = (fabsf(denom) < 1e-8f) ? 0.0f : 1.0f / denom;
+
+            XMFLOAT3 T = {
+                (e1.x * dv2 - e2.x * dv1) * r,
+                (e1.y * dv2 - e2.y * dv1) * r,
+                (e1.z * dv2 - e2.z * dv1) * r
+            };
+            XMFLOAT3 B = {
+                (e2.x * du1 - e1.x * du2) * r,
+                (e2.y * du1 - e1.y * du2) * r,
+                (e2.z * du1 - e1.z * du2) * r
+            };
+            add3(v0.Tangent, T); add3(v1.Tangent, T); add3(v2.Tangent, T);
+            add3(v0.Bitangent, B); add3(v1.Bitangent, B); add3(v2.Bitangent, B);
+        }
+    }
+
+    // -- Gram-Schmidt: ortogonalizar T respecto a N y recalcular B --
+    for (auto& v : vertices) {
+        // Normalizar N
+        float nLen = sqrtf(v.Normal.x * v.Normal.x + v.Normal.y * v.Normal.y + v.Normal.z * v.Normal.z);
+        if (nLen > 1e-6f) {
+            v.Normal.x /= nLen; v.Normal.y /= nLen; v.Normal.z /= nLen;
+        } else {
+            v.Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
+        }
+        // T = normalize(T - dot(T,N)*N)
+        float dTN = v.Tangent.x * v.Normal.x + v.Tangent.y * v.Normal.y + v.Tangent.z * v.Normal.z;
+        v.Tangent.x -= dTN * v.Normal.x;
+        v.Tangent.y -= dTN * v.Normal.y;
+        v.Tangent.z -= dTN * v.Normal.z;
+        float tLen = sqrtf(v.Tangent.x * v.Tangent.x + v.Tangent.y * v.Tangent.y + v.Tangent.z * v.Tangent.z);
+        if (tLen > 1e-6f) {
+            v.Tangent.x /= tLen; v.Tangent.y /= tLen; v.Tangent.z /= tLen;
+        }
+        // B = cross(N, T) con handedness preservado
+        XMFLOAT3 Bcalc = {
+            v.Normal.y * v.Tangent.z - v.Normal.z * v.Tangent.y,
+            v.Normal.z * v.Tangent.x - v.Normal.x * v.Tangent.z,
+            v.Normal.x * v.Tangent.y - v.Normal.y * v.Tangent.x
+        };
+        float hand = (Bcalc.x * v.Bitangent.x + Bcalc.y * v.Bitangent.y + Bcalc.z * v.Bitangent.z) < 0.0f
+            ? -1.0f : 1.0f;
+        v.Bitangent = { Bcalc.x * hand, Bcalc.y * hand, Bcalc.z * hand };
+    }
 
     MeshComponent meshData;
     meshData.m_name      = node->GetName();
-    meshData.m_vertex    = vertices;
-    meshData.m_index     = indices;
-    meshData.m_numVertex = (unsigned int)vertices.size();
-    meshData.m_numIndex  = (unsigned int)indices.size();
-    meshes.push_back(meshData);
+    meshData.m_vertex    = std::move(vertices);
+    meshData.m_index     = std::move(indices);
+    meshData.m_numVertex = static_cast<int>(meshData.m_vertex.size());
+    meshData.m_numIndex  = static_cast<int>(meshData.m_index.size());
+    meshes.push_back(std::move(meshData));
 }
 
 // ============================================================================

@@ -138,6 +138,16 @@ public:
     /** @brief Muestra la lista jerárquica de actores en escena. */
     void outliner(const std::vector<EU::TSharedPointer<Actor>>& actors);
 
+    /**
+     * @brief Panel de iluminación y sombras.
+     * @param lightDir    Dirección de la luz (float[3], se normaliza al aplicar).
+     * @param lightColor  Color de la luz (float[3], rango [0,1]).
+     * @param shadowBias  Bias del shadow map (ajusta shadow acne vs Peter Pan).
+     *
+     * @note Modifica los datos directamente; BaseApp los sube a GPU en el mismo frame.
+     */
+    void lightPanel(float* lightDir, float* lightColor, float& shadowBias);
+
 public:
     int selectedActorIndex = -1; ///< Índice del actor actualmente seleccionado.
 
@@ -149,4 +159,5 @@ private:
 
     bool show_exit_popup = false; ///< Control para mostrar popup de salida.
     bool m_imguiInitialized = false; ///< Bandera de inicialización de ImGui.
+    ImFont* m_mainFont = nullptr; ///< Fuente principal cargada desde archivo.
 };

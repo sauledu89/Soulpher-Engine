@@ -43,10 +43,23 @@ Actor::Actor(Device& device) {
     HRESULT hr;
     std::string classNameType = "Actor -> " + m_name;
 
-    // Buffer de modelo (mundo + color)
-    hr = m_modelBuffer.init(device, sizeof(CBChangesEveryFrame));
+    // b1: World matrix
+    hr = m_modelBuffer.init(device, sizeof(CBPerObject));
     if (FAILED(hr)) {
-        ERROR("Actor", classNameType.c_str(), "Failed to create new CBChangesEveryFrame");
+        ERROR("Actor", classNameType.c_str(), "Failed to create CBPerObject buffer");
+    }
+
+    // b2: material params (defaults: white opaque)
+    m_materialCB.BaseColor        = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    m_materialCB.Metallic         = 0.0f;
+    m_materialCB.Roughness        = 0.5f;
+    m_materialCB.AO               = 1.0f;
+    m_materialCB.NormalScale      = 1.0f;
+    m_materialCB.EmissiveStrength = 0.0f;
+    m_materialCB.AlphaCutoff      = 0.0f;
+    hr = m_materialBuffer.init(device, sizeof(CBPerMaterial));
+    if (FAILED(hr)) {
+        ERROR("Actor", classNameType.c_str(), "Failed to create CBPerMaterial buffer");
     }
 
     // Estados gráficos
@@ -66,8 +79,8 @@ Actor::Actor(Device& device) {
             ("Failed to initialize Shadow Shader. HRESULT: " + std::to_string(hr)).c_str());
     }
 
-    // Buffers y estados para sombras
-    hr = m_shaderBuffer.init(device, sizeof(CBChangesEveryFrame));
+    // Buffer CB para el pase de sombra (World de la sombra proyectada)
+    hr = m_shaderBuffer.init(device, sizeof(CBPerObject));
     if (FAILED(hr)) {
         ERROR("Main", "InitDevice",
             ("Failed to initialize Shadow Buffer. HRESULT: " + std::to_string(hr)).c_str());
@@ -103,18 +116,15 @@ void Actor::update(float deltaTime, DeviceContext& deviceContext) {
         if (component) { component->update(deltaTime); }
     }
 
-    m_model.mWorld = XMMatrixTranspose(getComponent<Transform>()->matrix);
-    m_model.vMeshColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-
+    XMStoreFloat4x4(&m_model.World, XMMatrixTranspose(getComponent<Transform>()->matrix));
     m_modelBuffer.update(deviceContext, nullptr, 0, nullptr, &m_model, 0, 0);
+    m_materialBuffer.update(deviceContext, nullptr, 0, nullptr, &m_materialCB, 0, 0);
 }
 
 /**
- * @brief Renderiza el actor y su sombra (si aplica).
+ * @brief Renderiza el actor en el color pass (sin sombra plana legacy).
  */
 void Actor::render(DeviceContext& deviceContext) {
-    if (canCastShadow()) { renderShadow(deviceContext); }
-
     m_blendstate.render(deviceContext);
     m_rasterizer.render(deviceContext);
     m_sampler.render(deviceContext, 0, 1);
@@ -125,7 +135,8 @@ void Actor::render(DeviceContext& deviceContext) {
         m_vertexBuffers[i].render(deviceContext, 0, 1);
         m_indexBuffers[i].render(deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
 
-        m_modelBuffer.render(deviceContext, 2, 1, true);
+        m_modelBuffer.render(deviceContext, 1, 1, true);       // b1 = World
+        m_materialBuffer.render(deviceContext, 2, 1, true);    // b2 = Material
 
         if (m_textures.size() > 0 && i < m_textures.size()) {
             m_textures[i].render(deviceContext, 0, 1);
@@ -144,6 +155,7 @@ void Actor::destroy() {
     for (auto& tex : m_textures) { tex.destroy(); }
 
     m_modelBuffer.destroy();
+    m_materialBuffer.destroy();
     m_rasterizer.destroy();
     m_blendstate.destroy();
     m_sampler.destroy();
@@ -165,6 +177,23 @@ void Actor::setMesh(Device& device, std::vector<MeshComponent> meshes) {
         hr = ib.init(device, mesh, D3D11_BIND_INDEX_BUFFER);
         if (FAILED(hr)) { ERROR("Actor", "setMesh", "Failed to create new indexBuffer"); }
         else { m_indexBuffers.push_back(ib); }
+    }
+}
+
+/**
+ * @brief Renderiza sólo la geometría del actor para el shadow depth pass.
+ *
+ * Solo enlaza buffers de vértices/índices y el CB de mundo (b1).
+ * El shadow VS lee LightViewProjection de CBPerFrame (b0), que el
+ * ForwardRenderer ya tiene enlazado antes de llamar a este método.
+ */
+void Actor::renderDepth(DeviceContext& deviceContext) {
+    deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    for (unsigned int i = 0; i < m_meshes.size(); ++i) {
+        m_vertexBuffers[i].render(deviceContext, 0, 1);
+        m_indexBuffers[i].render(deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
+        m_modelBuffer.render(deviceContext, 1, 1, true);  // b1 = World
+        deviceContext.DrawIndexed(m_meshes[i].m_numIndex, 0, 0);
     }
 }
 
@@ -199,10 +228,9 @@ void Actor::renderShadow(DeviceContext& deviceContext) {
 
     XMMATRIX worldShadow = worldYaw * S;
 
-    m_cbShadow.mWorld = XMMatrixTranspose(worldShadow);
-    m_cbShadow.vMeshColor = XMFLOAT4(0, 0, 0, 0.5f);
+    XMStoreFloat4x4(&m_cbShadow.World, XMMatrixTranspose(worldShadow));
     m_shaderBuffer.update(deviceContext, nullptr, 0, nullptr, &m_cbShadow, 0, 0);
-    m_shaderBuffer.render(deviceContext, 2, 1, true);
+    m_shaderBuffer.render(deviceContext, 1, 1, true);   // b1 = World de la sombra
 
     float blendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
     m_shaderShadow.render(deviceContext, PIXEL_SHADER);

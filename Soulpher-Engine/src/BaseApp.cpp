@@ -21,6 +21,7 @@
 
 #include "BaseApp.h"
 #include "ECS/Transform.h"
+#include "EngineUtilities/Vectors/Vector3.h"
 #include "imgui.h"
 
  // Color de limpieza por defecto (RGBA)
@@ -89,28 +90,25 @@ HRESULT BaseApp::init()
         return hr;
     }
 
-    // 5) InputLayout (POSITION, TEXCOORD)
+    // 5) InputLayout: debe coincidir exactamente con SimpleVertex { Pos, Normal, Tangent, Bitangent, Tex }
     std::vector<D3D11_INPUT_ELEMENT_DESC> layout;
     {
-        D3D11_INPUT_ELEMENT_DESC pos{};
-        pos.SemanticName = "POSITION";
-        pos.SemanticIndex = 0;
-        pos.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-        pos.InputSlot = 0;
-        pos.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-        pos.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-        pos.InstanceDataStepRate = 0;
-        layout.push_back(pos);
-
-        D3D11_INPUT_ELEMENT_DESC uv{};
-        uv.SemanticName = "TEXCOORD";
-        uv.SemanticIndex = 0;
-        uv.Format = DXGI_FORMAT_R32G32_FLOAT;
-        uv.InputSlot = 0;
-        uv.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-        uv.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-        uv.InstanceDataStepRate = 0;
-        layout.push_back(uv);
+        auto addElem = [&](const char* sem, DXGI_FORMAT fmt) {
+            D3D11_INPUT_ELEMENT_DESC e{};
+            e.SemanticName         = sem;
+            e.SemanticIndex        = 0;
+            e.Format               = fmt;
+            e.InputSlot            = 0;
+            e.AlignedByteOffset    = D3D11_APPEND_ALIGNED_ELEMENT;
+            e.InputSlotClass       = D3D11_INPUT_PER_VERTEX_DATA;
+            e.InstanceDataStepRate = 0;
+            layout.push_back(e);
+        };
+        addElem("POSITION",  DXGI_FORMAT_R32G32B32_FLOAT);
+        addElem("NORMAL",    DXGI_FORMAT_R32G32B32_FLOAT);
+        addElem("TANGENT",   DXGI_FORMAT_R32G32B32_FLOAT);
+        addElem("BITANGENT", DXGI_FORMAT_R32G32B32_FLOAT);
+        addElem("TEXCOORD",  DXGI_FORMAT_R32G32_FLOAT);
     }
 
     // 6) Shaders (.fx)
@@ -120,36 +118,39 @@ HRESULT BaseApp::init()
         return hr;
     }
 
-    // 7) Constant Buffers (cámara)
-    hr = m_neverChanges.init(m_device, sizeof(CBNeverChanges));
+    // 7) Constant Buffer b0: CBPerFrame (View + Projection + luz)
+    hr = m_cbPerFrameBuffer.init(m_device, sizeof(CBPerFrame));
     if (FAILED(hr)) {
-        ERROR("Main", "InitDevice", ("Failed to create CB NeverChanges. hr=" + std::to_string(hr)).c_str());
-        return hr;
-    }
-    hr = m_changeOnResize.init(m_device, sizeof(CBChangeOnResize));
-    if (FAILED(hr)) {
-        ERROR("Main", "InitDevice", ("Failed to create CB ChangeOnResize. hr=" + std::to_string(hr)).c_str());
+        ERROR("Main", "InitDevice", ("Failed to create CBPerFrame buffer. hr=" + std::to_string(hr)).c_str());
         return hr;
     }
 
-    // 8) Matrices de cámara (vista/proyección)
+    // 8) Matrices iniciales de camara — update() las recalcula cada frame.
     {
-        XMVECTOR Eye = XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
-        XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-        XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-        m_View = XMMatrixLookAtLH(Eye, At, Up);
-        cbNeverChanges.mView = XMMatrixTranspose(m_View);
-
         m_Projection = XMMatrixPerspectiveFovLH(
             XM_PIDIV4,
             m_window.m_width / (FLOAT)m_window.m_height,
             0.01f, 100.0f
         );
-        cbChangesOnResize.mProjection = XMMatrixTranspose(m_Projection);
+        // Vista inicial: update() la sobreescribira con la camara orbital.
+        XMVECTOR Eye = XMVectorSet(0.0f, 3.0f, -10.0f, 0.0f);
+        XMVECTOR At  = XMVectorSet(0.0f, -5.0f, 0.0f, 0.0f);
+        XMVECTOR Up  = XMVectorSet(0.0f,  1.0f, 0.0f, 0.0f);
+        m_View = XMMatrixLookAtLH(Eye, At, Up);
+        XMStoreFloat3(&m_camPos, Eye);
     }
 
-    // 9) Actor: Martis Ashura King (FBX) — fallo no fatal, continúa sin el modelo
+    // 9) Valores iniciales de luz (la UI los modifica en tiempo real desde aquí)
+    {
+        // Luz diagonal normalizada: (0.3, -1, 0.5) / ||(0.3,-1,0.5)||
+        float lx = 0.30f, ly = -1.0f, lz = 0.50f;
+        float len = sqrtf(lx*lx + ly*ly + lz*lz);
+        m_cbPerFrame.LightDir   = EU::Vector3(lx/len, ly/len, lz/len);
+        m_cbPerFrame.LightColor = EU::Vector3(1.0f, 1.0f, 1.0f);
+        m_cbPerFrame.ShadowBias = 0.003f;
+    }
+
+    // 10) Actor: Martis Ashura King (FBX) — fallo no fatal, continúa sin el modelo
     {
         auto martis = EU::MakeShared<Actor>(m_device);
         if (martis.isNull()) {
@@ -203,7 +204,8 @@ HRESULT BaseApp::init()
                     EU::Vector3(-1.50f,  0.00f, 0.00f), // Rotation (grados)
                     EU::Vector3( 5.00f,  5.00f, 5.00f)  // Scale
                 );
-                martis->setCastShadow(false);
+                martis->setName("Martis Ashura King");
+                martis->setCastShadow(true);
 
                 m_actors.push_back(martis);
             }
@@ -251,7 +253,8 @@ HRESULT BaseApp::init()
                     EU::Vector3( 0.00f,  0.00f,  0.00f), // Rotation (grados)
                     EU::Vector3( 1.00f,  1.00f,  1.00f)  // Scale
                 );
-                kirby->setCastShadow(false);
+                kirby->setName("Kirby");
+                kirby->setCastShadow(true);
 
                 m_actors.push_back(kirby);
             }
@@ -269,13 +272,16 @@ HRESULT BaseApp::init()
             return E_FAIL;
         }
 
-        // Malla del plano (UVs preparados para tiling)
+        // Malla del plano horizontal. Normal=(0,1,0), Tangent=(1,0,0), Bitangent=(0,0,1).
+        const XMFLOAT3 planeN = { 0.0f, 1.0f, 0.0f };
+        const XMFLOAT3 planeT = { 1.0f, 0.0f, 0.0f };
+        const XMFLOAT3 planeB = { 0.0f, 0.0f, 1.0f };
         SimpleVertex planeVertices[] =
         {
-            { XMFLOAT3(-kSize, 0.0f, -kSize), XMFLOAT2(0.0f,    0.0f) },
-            { XMFLOAT3(kSize, 0.0f, -kSize), XMFLOAT2(kTiling, 0.0f) },
-            { XMFLOAT3(kSize, 0.0f,  kSize), XMFLOAT2(kTiling, kTiling) },
-            { XMFLOAT3(-kSize, 0.0f,  kSize), XMFLOAT2(0.0f,    kTiling) },
+            { XMFLOAT3(-kSize, 0.0f, -kSize), planeN, planeT, planeB, XMFLOAT2(0.0f,    0.0f) },
+            { XMFLOAT3( kSize, 0.0f, -kSize), planeN, planeT, planeB, XMFLOAT2(kTiling, 0.0f) },
+            { XMFLOAT3( kSize, 0.0f,  kSize), planeN, planeT, planeB, XMFLOAT2(kTiling, kTiling) },
+            { XMFLOAT3(-kSize, 0.0f,  kSize), planeN, planeT, planeB, XMFLOAT2(0.0f,    kTiling) },
         };
         WORD planeIndices[] = { 0,2,1, 0,3,2 };
 
@@ -307,6 +313,7 @@ HRESULT BaseApp::init()
             EU::Vector3(1.0f, 1.0f, 1.0f)    // escala
         );
 
+        m_APlane->setName("Suelo");
         m_APlane->setCastShadow(false);
         m_APlane->setReceiveShadow(true);
 
@@ -316,7 +323,14 @@ HRESULT BaseApp::init()
     // 12) Luz
     m_LightPos = XMFLOAT4(2.0f, 4.0f, -2.0f, 1.0f);
 
-    // 13) ImGui (al final del init gráfico)
+    // 13) ForwardRenderer (shadow map)
+    hr = m_forwardRenderer.init(m_device);
+    if (FAILED(hr)) {
+        ERROR("Main", "InitDevice", ("Failed to initialize ForwardRenderer. hr=" + std::to_string(hr)).c_str());
+        return hr;
+    }
+
+    // 14) ImGui (al final del init gráfico)
     m_userInterface.init(
         m_window.m_hWnd,
         m_device.m_device,
@@ -344,6 +358,13 @@ void BaseApp::update()
 {
     // --- UI frame ---
     m_userInterface.update();
+
+    // Panel de iluminación/sombras (modifica m_cbPerFrame.LightDir/Color y ShadowBias)
+    m_userInterface.lightPanel(
+        &m_cbPerFrame.LightDir.x,
+        &m_cbPerFrame.LightColor.x,
+        m_cbPerFrame.ShadowBias
+    );
 
     // Inspector + Outliner
     if (!m_actors.empty())
@@ -438,16 +459,27 @@ void BaseApp::update()
             XMVECTOR up = XMVectorSet(0, 1, 0, 0);
 
             m_View = XMMatrixLookAtLH(eye, at, up);
+            XMStoreFloat3(&m_camPos, eye);  // guarda posicion para CBPerFrame
         }
     }
     // ----------------------------------------------------
 
-    // Subir cbuffers de cámara
-    cbNeverChanges.mView = XMMatrixTranspose(m_View);
-    m_neverChanges.update(m_deviceContext, nullptr, 0, nullptr, &cbNeverChanges, 0, 0);
+    // Subir CBPerFrame (b0): vista, proyeccion, camara
+    // LightDir/LightColor/ShadowBias son controlados por lightPanel() — no sobreescribir aqui
+    XMStoreFloat4x4(&m_cbPerFrame.View,       XMMatrixTranspose(m_View));
+    XMStoreFloat4x4(&m_cbPerFrame.Projection, XMMatrixTranspose(m_Projection));
+    m_cbPerFrame.CameraPos = EU::Vector3(m_camPos.x, m_camPos.y, m_camPos.z);
 
-    cbChangesOnResize.mProjection = XMMatrixTranspose(m_Projection);
-    m_changeOnResize.update(m_deviceContext, nullptr, 0, nullptr, &cbChangesOnResize, 0, 0);
+    // Calcular LightViewProjection para el shadow pass
+    {
+        XMFLOAT3 sceneCenter = { 0.0f, -5.0f, 0.0f };
+        float    sceneRadius = 20.0f;
+        XMMATRIX lvp = m_forwardRenderer.computeLightViewProj(
+            m_cbPerFrame.LightDir, sceneCenter, sceneRadius);
+        XMStoreFloat4x4(&m_cbPerFrame.LightViewProjection, XMMatrixTranspose(lvp));
+    }
+
+    m_cbPerFrameBuffer.update(m_deviceContext, nullptr, 0, nullptr, &m_cbPerFrame, 0, 0);
 
     // Actores
     for (auto& a : m_actors)
@@ -468,22 +500,33 @@ void BaseApp::update()
  * @note El orden es importante: primero 3D, luego UI.
  */
 void BaseApp::render() {
-    // Limpiar y bind RTV/DSV
+    // 1) Bind CBPerFrame (b0) antes del shadow pass — el shadow VS necesita LightViewProjection
+    m_cbPerFrameBuffer.render(m_deviceContext, 0, 1, true);
+
+    // 2) Shadow depth pass: renderiza la escena desde el punto de vista de la luz
+    m_forwardRenderer.renderShadowPass(m_deviceContext, m_actors);
+
+    // 3) Restaurar render target principal y limpiar
     m_renderTargetView.render(m_deviceContext, m_depthStencilView, 1, kClear);
     m_viewport.render(m_deviceContext);
     m_depthStencilView.render(m_deviceContext);
 
-    // Pipeline
+    // 4) Pipeline de color principal
     m_shaderProgram.render(m_deviceContext);
 
-    // Constantes
-    m_neverChanges.render(m_deviceContext, 0, 1);
-    m_changeOnResize.render(m_deviceContext, 1, 1);
+    // 5) Re-enlazar CBPerFrame (b0) al pipeline de color (VS y PS lo necesitan)
+    m_cbPerFrameBuffer.render(m_deviceContext, 0, 1, true);
 
-    // Dibujo de actores
+    // 6) Enlazar shadow map en t6 antes del draw loop
+    m_forwardRenderer.bindShadowMap(m_deviceContext);
+
+    // 7) Dibujo de actores (color pass)
     for (auto& a : m_actors) if (!a.isNull()) a->render(m_deviceContext);
 
-    // UI + Present
+    // 8) Desenlazar shadow map (debe estar libre antes del shadow pass del siguiente frame)
+    m_forwardRenderer.unbindShadowMap(m_deviceContext);
+
+    // 9) UI + Present
     m_userInterface.render();
     m_swapChain.present();
 }
@@ -508,8 +551,8 @@ void BaseApp::destroy() {
     for (auto& a : m_actors) if (!a.isNull()) a->destroy();
     m_actors.clear();
 
-    m_neverChanges.destroy();
-    m_changeOnResize.destroy();
+    m_forwardRenderer.destroy();
+    m_cbPerFrameBuffer.destroy();
     m_shaderProgram.destroy();
     m_depthStencil.destroy();
     m_depthStencilView.destroy();

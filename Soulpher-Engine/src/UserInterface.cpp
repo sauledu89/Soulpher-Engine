@@ -28,6 +28,24 @@ void UserInterface::init(void* window, ID3D11Device* device, ID3D11DeviceContext
     // <<< Clave para poder arrastrar desde cualquier parte de la ventana
     io.ConfigWindowsMoveFromTitleBarOnly = false;
 
+    // Fuente pixel art — se verifica existencia antes de llamar a ImGui
+    // para evitar la IM_ASSERT interna de AddFontFromFileTTF
+    {
+        ImFontConfig cfg;
+        cfg.OversampleH = cfg.OversampleV = 1;
+        cfg.PixelSnapH  = true;
+
+        FILE* probe = nullptr;
+        fopen_s(&probe, "Minecraftia-Regular.ttf", "rb");
+        if (probe) {
+            fclose(probe);
+            m_mainFont = io.Fonts->AddFontFromFileTTF("Minecraftia-Regular.ttf", 16.0f, &cfg);
+        }
+        if (!m_mainFont) {
+            m_mainFont = io.Fonts->AddFontDefault();
+        }
+    }
+
     ImGui::StyleColorsDark();
     NeonRedStyle();
 
@@ -180,9 +198,12 @@ void UserInterface::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
     ImGui::Checkbox("##Static", &isStatic);
     ImGui::SameLine();
 
-    char objectName[128] = "Cube";
+    // Buffer local para editar el nombre — se aplica al actor al confirmar
+    char nameBuf[128] = {};
+    strncpy_s(nameBuf, actor->getName().c_str(), sizeof(nameBuf) - 1);
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth() * 0.6f);
-    ImGui::InputText("##ObjectName", &actor->getName()[0], IM_ARRAYSIZE(objectName));
+    if (ImGui::InputText("##ObjectName", nameBuf, sizeof(nameBuf)))
+        actor->getName() = nameBuf;
     ImGui::SameLine();
 
     if (ImGui::Button("Icon")) {
@@ -599,28 +620,96 @@ void UserInterface::RenderFullScreenTransparentWindow() {
     ImGui::End();
 }
 
+void UserInterface::lightPanel(float* lightDir, float* lightColor, float& shadowBias) {
+    ImGui::Begin("Lighting");
+
+    // --- Luz direccional ---
+    if (ImGui::CollapsingHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Direction");
+        ImGui::SameLine();
+        ImGui::TextDisabled("(se normaliza)");
+
+        bool changed = ImGui::DragFloat3("##LightDir", lightDir, 0.01f, -1.0f, 1.0f, "%.3f");
+        if (changed) {
+            // Mantener normalizado para que la iluminación no cambie de intensidad
+            float len = sqrtf(lightDir[0]*lightDir[0] + lightDir[1]*lightDir[1] + lightDir[2]*lightDir[2]);
+            if (len > 1e-5f) {
+                lightDir[0] /= len;
+                lightDir[1] /= len;
+                lightDir[2] /= len;
+            }
+        }
+
+        // Preset buttons para dirección de luz
+        ImGui::Text("Presets:");
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Cenital"))  { lightDir[0]=0.0f; lightDir[1]=-1.0f; lightDir[2]=0.0f; }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Diagonal")) { lightDir[0]=0.3f; lightDir[1]=-1.0f; lightDir[2]=0.5f;
+            float l = sqrtf(0.09f+1.0f+0.25f); lightDir[0]/=l; lightDir[1]/=l; lightDir[2]/=l; }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Lateral"))  { lightDir[0]=1.0f; lightDir[1]=-0.3f; lightDir[2]=0.0f;
+            float l = sqrtf(1.0f+0.09f); lightDir[0]/=l; lightDir[1]/=l; lightDir[2]/=l; }
+
+        ImGui::Separator();
+
+        ImGui::Text("Color");
+        ImGui::ColorEdit3("##LightColor", lightColor,
+            ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB);
+    }
+
+    // --- UI ---
+    if (ImGui::CollapsingHeader("Interface")) {
+        float scale = ImGui::GetIO().FontGlobalScale;
+        if (ImGui::SliderFloat("Font Scale", &scale, 0.5f, 2.5f, "%.1fx"))
+            ImGui::GetIO().FontGlobalScale = scale;
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Reset##fs")) ImGui::GetIO().FontGlobalScale = 1.0f;
+    }
+
+    // --- Sombras ---
+    if (ImGui::CollapsingHeader("Shadow Map", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Bias");
+        ImGui::SameLine();
+        ImGui::TextDisabled("(+acne  -peter pan)");
+        ImGui::SliderFloat("##ShadowBias", &shadowBias, 0.0f, 0.02f, "%.5f");
+
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Reset")) shadowBias = 0.003f;
+    }
+
+    ImGui::End();
+}
+
 void UserInterface::outliner(const std::vector<EU::TSharedPointer<Actor>>& actors) {
     ImGui::Begin("Hierarchy");
 
     static ImGuiTextFilter filter;
-    filter.Draw("Search...", 180.0f);
+    filter.Draw("##Search", ImGui::GetContentRegionAvailWidth());
     ImGui::Separator();
 
     for (int i = 0; i < (int)actors.size(); ++i) {
         const auto& actor = actors[i];
-        std::string actorName = actor ? actor->getName() : "Unnamed Actor";
-        if (!filter.PassFilter(actorName.c_str()))
-            continue;
+        if (actor.isNull()) continue;
 
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-        if (selectedActorIndex == i) flags |= ImGuiTreeNodeFlags_Selected;
+        const std::string& name = const_cast<EU::TSharedPointer<Actor>&>(actor)->getName();
+        if (!filter.PassFilter(name.c_str())) continue;
 
-        bool nodeOpen = ImGui::TreeNodeEx((void*)(intptr_t)i, flags, "%s", actorName.c_str());
-        if (ImGui::IsItemClicked())
+        bool selected = (selectedActorIndex == i);
+
+        // Icono simple según si proyecta o no sombra
+        const char* icon = actor->canCastShadow() ? "[*] " : "[ ] ";
+        std::string label = icon + name + "##" + std::to_string(i);
+
+        if (ImGui::Selectable(label.c_str(), selected)) {
             selectedActorIndex = i;
+        }
 
-        if (nodeOpen) {
-            ImGui::TreePop();
+        // Tooltip con info rápida
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("Cast shadow: %s", actor->canCastShadow() ? "si" : "no");
+            ImGui::EndTooltip();
         }
     }
 

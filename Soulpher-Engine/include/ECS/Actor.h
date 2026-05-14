@@ -9,6 +9,7 @@
 #include "BlendState.h"
 #include "ShaderProgram.h"
 #include "DepthStencilState.h"
+#include "Rendering/RenderTypes.h"
 
 class Device;
 class MeshComponent;
@@ -20,14 +21,14 @@ class MeshComponent;
  * @details
  * Un `Actor` es un tipo especial de `Entity` que representa objetos 3D visibles en el motor.
  * Maneja:
- * - Transformaciones (posición, rotación, escala).
+ * - Transformaciones (posiciï¿½n, rotaciï¿½n, escala).
  * - Mallas y texturas asociadas.
- * - Buffers de vértices e índices para el renderizado.
+ * - Buffers de vï¿½rtices e ï¿½ndices para el renderizado.
  * - Estados de renderizado y sombreado.
- * - Soporte para sombras (proyección y recepción).
+ * - Soporte para sombras (proyecciï¿½n y recepciï¿½n).
  *
  * @note Para estudiantes:
- * - Este patrón ECS separa los datos (componentes) de la lógica (sistemas).
+ * - Este patrï¿½n ECS separa los datos (componentes) de la lï¿½gica (sistemas).
  * - Cada `Actor` es un contenedor flexible de componentes que pueden cambiar en tiempo real.
  * - En juegos grandes, esto ayuda a optimizar memoria y permitir entidades con diferentes combinaciones de capacidades.
  */
@@ -38,9 +39,9 @@ public:
 
     /**
      * @brief Constructor que inicializa el actor con un dispositivo DirectX.
-     * @param device Dispositivo DirectX para inicializar recursos gráficos.
+     * @param device Dispositivo DirectX para inicializar recursos grï¿½ficos.
      *
-     * @note Usar este constructor cuando el actor requiera recursos GPU desde su creación.
+     * @note Usar este constructor cuando el actor requiera recursos GPU desde su creaciï¿½n.
      */
     Actor(Device& device);
 
@@ -48,10 +49,10 @@ public:
     virtual ~Actor() = default;
 
     /**
-     * @brief Activa o desactiva la recepción de sombras.
+     * @brief Activa o desactiva la recepciï¿½n de sombras.
      * @param v `true` para recibir sombras, `false` para ignorarlas.
      *
-     * @note Desactivar la recepción puede optimizar el render en objetos lejanos o poco relevantes.
+     * @note Desactivar la recepciï¿½n puede optimizar el render en objetos lejanos o poco relevantes.
      */
     void setReceiveShadow(bool v) { m_receiveShadow = v; }
 
@@ -61,15 +62,15 @@ public:
      */
     bool getReceiveShadow() const { return m_receiveShadow; }
 
-    /** @brief Inicializa el actor. Sobrescribe la inicialización base. */
+    /** @brief Inicializa el actor. Sobrescribe la inicializaciï¿½n base. */
     void init() override {}
 
     /**
-     * @brief Actualiza la lógica del actor.
-     * @param deltaTime Tiempo en segundos desde la última actualización.
-     * @param deviceContext Contexto de dispositivo usado para operaciones gráficas.
+     * @brief Actualiza la lï¿½gica del actor.
+     * @param deltaTime Tiempo en segundos desde la ï¿½ltima actualizaciï¿½n.
+     * @param deviceContext Contexto de dispositivo usado para operaciones grï¿½ficas.
      *
-     * @note En un motor real, aquí se podrían actualizar animaciones, IA o físicas.
+     * @note En un motor real, aquï¿½ se podrï¿½an actualizar animaciones, IA o fï¿½sicas.
      */
     void update(float deltaTime, DeviceContext& deviceContext) override;
 
@@ -78,8 +79,8 @@ public:
      * @param deviceContext Contexto del dispositivo para enviar draw calls.
      *
      * @note Para estudiantes:
-     * - Este método es llamado típicamente cada frame.
-     * - Es un buen lugar para estudiar cómo se preparan y envían los datos a la GPU.
+     * - Este mï¿½todo es llamado tï¿½picamente cada frame.
+     * - Es un buen lugar para estudiar cï¿½mo se preparan y envï¿½an los datos a la GPU.
      */
     void render(DeviceContext& deviceContext) override;
 
@@ -97,8 +98,8 @@ public:
      */
     void setMesh(Device& device, std::vector<MeshComponent> meshes);
 
-    /** @brief Obtiene el nombre del actor. */
-    std::string getName() { return m_name; }
+    /** @brief Obtiene el nombre del actor (referencia mutable, permite ediciÃ³n desde UI). */
+    std::string& getName() { return m_name; }
 
     /** @brief Asigna un nombre al actor. */
     void setName(const std::string& name) { m_name = name; }
@@ -122,36 +123,45 @@ public:
     bool canCastShadow() const { return castShadow; }
 
     /**
-     * @brief Renderiza la sombra del actor (depth pass).
+     * @brief Renderiza sÃ³lo la geometrÃ­a del actor para el shadow depth pass.
      * @param deviceContext Contexto del dispositivo.
      *
-     * @note Suele usarse en un pase previo para mapas de sombras.
+     * @note El ForwardRenderer llama a este mÃ©todo durante el shadow pass.
+     *       CBPerFrame (b0) debe estar ya ligado antes de llamarlo.
+     */
+    void renderDepth(DeviceContext& deviceContext);
+
+    /**
+     * @brief Renderiza la sombra plana proyectada en el suelo (sombra fake legacy).
+     * @param deviceContext Contexto del dispositivo.
      */
     void renderShadow(DeviceContext& deviceContext);
 
 private:
-    // === Geometría y texturas ===
+    // === Geometrï¿½a y texturas ===
     std::vector<MeshComponent> m_meshes;   ///< Mallas que componen el actor.
     std::vector<Texture> m_textures;       ///< Texturas aplicadas.
-    std::vector<Buffer> m_vertexBuffers;   ///< Buffers de vértices (GPU).
-    std::vector<Buffer> m_indexBuffers;    ///< Buffers de índices (GPU).
+    std::vector<Buffer> m_vertexBuffers;   ///< Buffers de vï¿½rtices (GPU).
+    std::vector<Buffer> m_indexBuffers;    ///< Buffers de ï¿½ndices (GPU).
 
     // === Estados de renderizado ===
     BlendState m_blendstate;               ///< Estado de mezcla para transparencia/opacidad.
-    Rasterizer m_rasterizer;               ///< Configuración de rasterización (culling, fill mode).
+    Rasterizer m_rasterizer;               ///< Configuraciï¿½n de rasterizaciï¿½n (culling, fill mode).
     SamplerState m_sampler;                ///< Estado del muestreador de texturas.
 
-    // === Constantes de modelo ===
-    CBChangesEveryFrame m_model;           ///< Constantes que cambian cada frame (transformaciones).
-    Buffer m_modelBuffer;                  ///< Buffer de constantes para el modelo.
+    // === Constantes de modelo (b1 = CBPerObject, b2 = CBPerMaterial) ===
+    CBPerObject   m_model;          ///< Matriz de mundo (actualizada cada frame).
+    Buffer        m_modelBuffer;    ///< Constant buffer slot b1.
+    CBPerMaterial m_materialCB;     ///< Parametros de material (color, PBR).
+    Buffer        m_materialBuffer; ///< Constant buffer slot b2.
 
     // === Sombras ===
-    ShaderProgram m_shaderShadow;          ///< Shader para renderizado de sombras.
-    Buffer m_shaderBuffer;                 ///< Buffer asociado al shader de sombras.
-    BlendState m_shadowBlendState;         ///< Estado de mezcla usado en el pase de sombras.
-    DepthStencilState m_shadowDepthStencilState; ///< Estado de profundidad para sombras.
-    CBChangesEveryFrame m_cbShadow;        ///< Buffer de constantes para sombras.
-    XMFLOAT4 m_LightPos;                    ///< Posición de la luz que proyecta las sombras.
+    ShaderProgram     m_shaderShadow;            ///< Pixel shader de sombra plana.
+    Buffer            m_shaderBuffer;            ///< CB slot b1 para el pase de sombra.
+    BlendState        m_shadowBlendState;
+    DepthStencilState m_shadowDepthStencilState;
+    CBPerObject       m_cbShadow;               ///< Mundo proyectado en el suelo.
+    XMFLOAT4 m_LightPos;                    ///< Posiciï¿½n de la luz que proyecta las sombras.
 
     // === Metadatos ===
     std::string m_name = "Actor";          ///< Nombre identificador del actor.

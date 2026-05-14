@@ -65,6 +65,36 @@ HRESULT Buffer::init(Device& device, const MeshComponent& mesh, unsigned int bin
     return createBuffer(device, desc, &data);
 }
 
+HRESULT Buffer::init(Device& device,
+    const void* data,
+    unsigned int elementCount,
+    unsigned int elementStride,
+    unsigned int bindFlag) {
+    if (!device.m_device) {
+        ERROR("Buffer", "init", "Device is null.");
+        return E_POINTER;
+    }
+    if (!data || elementCount == 0 || elementStride == 0) {
+        ERROR("Buffer", "init", "data, elementCount and elementStride must be non-zero.");
+        return E_INVALIDARG;
+    }
+
+    m_stride   = elementStride;
+    m_offset   = 0;
+    m_bindFlag = bindFlag;
+
+    D3D11_BUFFER_DESC desc{};
+    desc.Usage          = D3D11_USAGE_DEFAULT;
+    desc.ByteWidth      = elementCount * elementStride;
+    desc.BindFlags      = static_cast<D3D11_BIND_FLAG>(bindFlag);
+    desc.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA initData{};
+    initData.pSysMem = data;
+
+    return createBuffer(device, desc, &initData);
+}
+
 /**
  * @brief Inicializa un Constant Buffer vacío.
  * @param device Dispositivo D3D11.

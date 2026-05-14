@@ -40,6 +40,21 @@ public:
     HRESULT init(Device& device, const MeshComponent& mesh, unsigned int bindFlag);
 
     /**
+     * @brief Inicializa un Vertex o Index Buffer desde un bloque de memoria arbitrario.
+     * @param device        Dispositivo Direct3D.
+     * @param data          Puntero a los datos fuente (no puede ser nullptr).
+     * @param elementCount  Numero de elementos en el arreglo.
+     * @param elementStride Tamano de cada elemento en bytes.
+     * @param bindFlag      D3D11_BIND_VERTEX_BUFFER o D3D11_BIND_INDEX_BUFFER.
+     *
+     * Permite crear buffers sin depender de MeshComponent: geometria procedural,
+     * vertices con formato personalizado (SimpleVertex con Normal/Tangent/Bitangent),
+     * o datos generados en tiempo de ejecucion.
+     */
+    HRESULT init(Device& device, const void* data, unsigned int elementCount,
+                 unsigned int elementStride, unsigned int bindFlag);
+
+    /**
      * @brief Inicializa un Constant Buffer vacío.
      * @param device Dispositivo Direct3D.
      * @param ByteWidth Tamaño en bytes del buffer (debe ser múltiplo de 16).

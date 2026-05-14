@@ -19,6 +19,7 @@
 
 #pragma once
 #include "Prerequisites.h"
+#include "Rendering/RenderTypes.h"
 
 #include "Window.h"
 #include "Device.h"
@@ -34,6 +35,7 @@
 #include "ModelLoader.h"
 #include "UserInterface.h"
 #include "ECS/Actor.h"
+#include "Rendering/ForwardRenderer.h"
 #include <vector>
 
  /**
@@ -90,11 +92,10 @@ private:
     Viewport       m_viewport;           ///< Viewport principal.
     ShaderProgram  m_shaderProgram;      ///< Programa de shaders activos.
 
-    // CBuffers de cámara
-    Buffer           m_neverChanges;       ///< Buffer constante slot b0 (parámetros estáticos de cámara).
-    Buffer           m_changeOnResize;     ///< Buffer constante slot b1 (parámetros que cambian con el tamaño de ventana).
-    CBNeverChanges   cbNeverChanges{};     ///< Datos que casi no cambian (posición de luz, etc.).
-    CBChangeOnResize cbChangesOnResize{};  ///< Datos que cambian al redimensionar.
+    // CBuffer de cámara y luz (b0) — reemplaza los tres CBs anteriores
+    Buffer    m_cbPerFrameBuffer;   ///< Constant buffer slot b0: View, Projection, luz.
+    CBPerFrame m_cbPerFrame{};      ///< Datos del frame actual para el GPU.
+    XMFLOAT3  m_camPos{};          ///< Posicion de la camara en mundo (para CameraPos en shader).
 
     // Matrices de cámara
     XMMATRIX       m_View;               ///< Matriz de vista.
@@ -117,6 +118,9 @@ private:
     // Interfaz y actores
     UserInterface  m_userInterface;      ///< Interfaz de usuario (ImGui).
     std::vector<EU::TSharedPointer<Actor>> m_actors; ///< Lista de actores en la escena.
+
+    // Forward renderer con shadow map
+    ForwardRenderer m_forwardRenderer;    ///< Orquesta shadow pass + binding del shadow map.
 
     // Parámetros de cámara orbital
     float    m_camYawDeg = 0.0f;          ///< Ángulo de giro horizontal.
