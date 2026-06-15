@@ -6,11 +6,11 @@ class DeviceContext;
 
 /**
  * @file BlendState.h
- * @brief Encapsulación de un estado de blending en Direct3D 11.
+ * @brief Encapsulaciï¿½n de un estado de blending en Direct3D 11.
  *
  * @details
- * El blending en gráficos 3D es el proceso de combinar el color resultante de un
- * fragmento (pixel) que se está dibujando con el color ya presente en el render target.
+ * El blending en grï¿½ficos 3D es el proceso de combinar el color resultante de un
+ * fragmento (pixel) que se estï¿½ dibujando con el color ya presente en el render target.
  *
  * Esta clase:
  * - Crea un `ID3D11BlendState` a partir de configuraciones predefinidas.
@@ -18,9 +18,18 @@ class DeviceContext;
  * - Permite activar/desactivar efectos como transparencia alfa, aditivos, etc.
  *
  * @note Para estudiantes:
- * - El blending es esencial para efectos como **vidrios, humo, partículas y UI semitransparente**.
+ * - El blending es esencial para efectos como **vidrios, humo, partï¿½culas y UI semitransparente**.
  * - Cambiar el estado de blending en cada draw call puede afectar el rendimiento.
  * - Es recomendable agrupar los objetos con el mismo estado para minimizar cambios de estado.
+ *
+ * @note [GameDev] El orden de render con blending es critico: los objetos transparentes
+ * DEBEN dibujarse despues de los opacos y de back-to-front (lejano antes que cercano).
+ * Si se dibujan desordenados, el blending produce artefactos visuales (transparencias
+ * cortadas o mal mezcladas). Esta es la razon por la que RenderScene separa
+ * opaqueObjects de transparentObjects.
+ * En Unreal Engine esto se maneja automaticamente con el TranslucencySortPolicy.
+ * El blending aditivo (Additive) es el mas comun para particulas de fuego/luz ya que
+ * suma energia al buffer: nunca oscurece, solo aclara.
  */
 class BlendState {
 public:
@@ -32,18 +41,18 @@ public:
 
     /**
      * @brief Inicializa el estado de blending en la GPU.
-     * @param device Dispositivo de Direct3D para la creación del estado.
-     * @return HRESULT que indica éxito (`S_OK`) o el tipo de error.
+     * @param device Dispositivo de Direct3D para la creaciï¿½n del estado.
+     * @return HRESULT que indica ï¿½xito (`S_OK`) o el tipo de error.
      *
-     * @note Este método suele configurarse con una descripción (`D3D11_BLEND_DESC`)
+     * @note Este mï¿½todo suele configurarse con una descripciï¿½n (`D3D11_BLEND_DESC`)
      *       que define el tipo de mezcla.
      */
     HRESULT init(Device& device);
 
     /**
-     * @brief Actualiza parámetros internos (actualmente sin implementación).
+     * @brief Actualiza parï¿½metros internos (actualmente sin implementaciï¿½n).
      *
-     * @note Aquí podría reconfigurarse el estado si se quisiera cambiar el tipo de blending en runtime.
+     * @note Aquï¿½ podrï¿½a reconfigurarse el estado si se quisiera cambiar el tipo de blending en runtime.
      */
     void update() {};
 
@@ -51,7 +60,7 @@ public:
      * @brief Aplica el estado de blending al contexto de render.
      * @param deviceContext Contexto de dispositivo sobre el que aplicar el estado.
      * @param blendFactor Array de 4 floats (RGBA) que modulan la mezcla.
-     * @param sampleMask Máscara de muestreo de píxeles (por defecto todos habilitados).
+     * @param sampleMask Mï¿½scara de muestreo de pï¿½xeles (por defecto todos habilitados).
      * @param reset Si es `true`, restablece el estado por defecto del pipeline.
      *
      * @note

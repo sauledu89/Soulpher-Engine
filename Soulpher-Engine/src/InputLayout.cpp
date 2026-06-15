@@ -15,6 +15,13 @@
  *
  * @note Este código requiere que el Vertex Shader ya esté compilado para poder crear el Input Layout,
  *       ya que usa su bytecode para validar la compatibilidad del formato.
+ *
+ * @note [GameDev] CreateInputLayout requiere el bytecode del VS compilado para
+ * validar que los semantics del Layout (POSITION, NORMAL, TANGENT, BITANGENT, TEXCOORD)
+ * coincidan con las entradas declaradas en el HLSL. Si no coinciden, D3D11 devuelve
+ * E_INVALIDARG en lugar de un crash silencioso, lo que facilita mucho el debug.
+ * ShaderProgram guarda m_vertexShaderData solo hasta que se llama a CreateInputLayout;
+ * despues se libera ya que el IL tiene toda la informacion que necesita.
  */
 
 #include "InputLayout.h"

@@ -6,20 +6,21 @@ class DeviceContext;
 
 /**
  * @file DepthStencilState.h
- * @brief Encapsula la configuración del estado de profundidad y stencil en Direct3D 11.
+ * @brief Encapsula la configuración del estado de profundidad en Direct3D 11.
  *
  * @details
- * Controla dos pruebas fundamentales en el pipeline gráfico:
- * - **Depth Test (Prueba de profundidad):** Determina si un píxel debe dibujarse
- *   comparando su valor de profundidad (Z) con el ya almacenado en el Depth Buffer.
- * - **Stencil Test (Prueba de máscara):** Permite dibujar sólo en ciertas regiones
- *   de la pantalla mediante una máscara (Stencil Buffer).
+ * Controla la prueba de profundidad (Depth Test) del pipeline gráfico:
+ * determina si un píxel se dibuja comparando su valor Z con el almacenado en el Depth Buffer.
  *
- * @note Para estudiantes:
- * - El **Depth Test** es esencial para el renderizado 3D correcto: evita que objetos lejanos
- *   aparezcan sobre objetos cercanos.
- * - El **Stencil Test** se usa para efectos como espejos, portales, siluetas y máscaras.
- * - Cambiar este estado demasiado seguido puede impactar el rendimiento.
+ * @note [GameDev] En el Deferred Renderer se necesitan TRES estados distintos:
+ * - **Shadow pass**: depth enabled, write ON, LESS → escribe el shadow map.
+ * - **Lighting pass (transparent)**: depth enabled, write OFF (ZERO), LESS_EQUAL → lee pero no
+ *   sobreescribe el depth de los opacos (evita z-fighting entre opacos y transparentes).
+ * - **Lighting pass (disabled)**: depth disabled → el fullscreen quad no compite con el depth
+ *   del G-buffer (siempre queremos que el quad de iluminación "gane").
+ * Esto requiere crear tres instancias de DepthStencilState con distintos parámetros.
+ * El Stencil Buffer (no expuesto en esta interfaz simplificada) tiene usos creativos:
+ * Doom 2016 lo usa para Mega Texture streaming; juegos de terror lo usan para portales y espejos.
  */
 class DepthStencilState {
 public:
@@ -30,17 +31,21 @@ public:
     ~DepthStencilState() = default;
 
     /**
-     * @brief Inicializa el estado de profundidad y stencil.
-     * @param device Dispositivo de Direct3D para crear el estado.
+     * @brief Inicializa el estado de profundidad.
+     * @param device      Dispositivo Direct3D para crear el estado.
      * @param enableDepth `true` para habilitar la prueba de profundidad.
-     * @param enableStencil `true` para habilitar la prueba de stencil.
+     * @param writeMask   Máscara de escritura: `D3D11_DEPTH_WRITE_MASK_ALL` escribe profundidad,
+     *                    `D3D11_DEPTH_WRITE_MASK_ZERO` la lee sin modificarla.
+     * @param compareFunc Función de comparación (`D3D11_COMPARISON_LESS` por defecto).
      * @return `S_OK` si la inicialización fue exitosa; código de error en caso contrario.
      *
-     * @note
-     * - Con `enableDepth = false`, todos los píxeles se dibujan sin comparar su Z.
-     * - Con `enableStencil = true`, se habilita el uso de la máscara de stencil.
+     * @note Usa `writeMask = D3D11_DEPTH_WRITE_MASK_ZERO` para el lighting pass deferred:
+     * lee el depth del G-buffer sin sobreescribirlo con el fullscreen quad.
      */
-    HRESULT init(Device& device, bool enableDepth = true, bool enableStencil = false);
+    HRESULT init(Device& device,
+                 bool                  enableDepth = true,
+                 D3D11_DEPTH_WRITE_MASK writeMask  = D3D11_DEPTH_WRITE_MASK_ALL,
+                 D3D11_COMPARISON_FUNC  compareFunc = D3D11_COMPARISON_LESS);
 
     /**
      * @brief Actualiza parámetros internos.

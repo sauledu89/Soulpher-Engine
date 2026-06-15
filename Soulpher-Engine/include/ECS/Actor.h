@@ -31,6 +31,14 @@ class MeshComponent;
  * - Este patr�n ECS separa los datos (componentes) de la l�gica (sistemas).
  * - Cada `Actor` es un contenedor flexible de componentes que pueden cambiar en tiempo real.
  * - En juegos grandes, esto ayuda a optimizar memoria y permitir entidades con diferentes combinaciones de capacidades.
+ *
+ * @note [GameDev] Actor extiende Entity con capacidades de render: mallas, texturas,
+ * constant buffers y soporte de shadow casting/receiving. En Unreal Engine, AActor tiene
+ * esta misma responsabilidad pero delega la geometria a UStaticMeshComponent.
+ * El metodo renderDepth() es llamado por ForwardRenderer durante el shadow pass (Pass 1)
+ * para poblar el shadow map sin ejecutar el pixel shader de color.
+ * La separacion castShadow/receiveShadow permite optimizar: objetos lejanos o poco
+ * visibles pueden desactivar cast para ahorrar vertices en el shadow pass.
  */
 class Actor : public Entity {
 public:

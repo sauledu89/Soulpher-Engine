@@ -1,6 +1,6 @@
 ﻿/**
  * @file UserInterface.h
- * @brief Declaración de la clase UserInterface para gestionar ImGui en The Visionary Engine.
+ * @brief Capa de interfaz gráfica ImGui del editor de Soulpher-Engine.
  *
  * @details
  * Esta clase es la **capa de interfaz gráfica** del motor, utilizando **Dear ImGui** para
@@ -19,6 +19,12 @@
  * - Implementar un **Outliner** para seleccionar objetos en la escena.
  * - Crear menús de herramientas para cambiar materiales, cargar modelos o ajustar luces.
  * - Visualizar el **framebuffer** en una ventana de preview.
+ *
+ * @note [GameDev] ImGui usa el patron Immediate Mode: la UI no tiene estado persistente,
+ * se reconstruye completamente cada frame desde cero. Unreal Engine usa Slate (Retained
+ * Mode) para su editor — los widgets son objetos C++ persistentes con estado propio.
+ * UMG (para UI en juego) se compila a Slate internamente. ImGui es preferido para
+ * herramientas internas por su overhead minimo y su facilidad de iteracion rapida.
  */
 
 #pragma once
@@ -50,6 +56,9 @@ public:
 
     /** @brief Aplica un esquema de colores tipo "Neon Red". */
     void NeonRedStyle();
+
+    /** @brief Aplica el tema cyberpunk de Soulpher-Engine: neón cian/magenta sobre negro profundo. */
+    void CyberpunkStyle();
 
     /**
      * @brief Inicializa ImGui y lo vincula a la ventana y dispositivo de render.

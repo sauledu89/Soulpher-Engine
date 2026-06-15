@@ -7,19 +7,27 @@ class DeviceContext;
  * @brief Clase base abstracta para todos los componentes del motor de juego.
  *
  * @details
- * Esta clase define la **interfaz mínima** que debe implementar cualquier componente
+ * Esta clase define la **interfaz mï¿½nima** que debe implementar cualquier componente
  * en un sistema basado en **ECS (Entity-Component System)**.
  *
  * Un `Component` representa datos o comportamientos que se pueden asociar a una entidad (`Entity`).
  * Por ejemplo:
- * - Componente de Transformación (posición, rotación, escala)
+ * - Componente de Transformaciï¿½n (posiciï¿½n, rotaciï¿½n, escala)
  * - Componente de Render (malla, materiales, shaders)
- * - Componente de Física (colisiones, fuerzas)
+ * - Componente de Fï¿½sica (colisiones, fuerzas)
  *
  * @note Para estudiantes:
- * - Un `Component` **no** conoce la lógica de otros sistemas; solo maneja su propia responsabilidad.
- * - La lógica que coordina varios componentes vive en los **sistemas** del motor.
- * - Usar interfaces virtuales puras fuerza a que todas las clases hijas implementen los métodos clave (`init`, `update`, `render`, `destroy`).
+ * - Un `Component` **no** conoce la lï¿½gica de otros sistemas; solo maneja su propia responsabilidad.
+ * - La lï¿½gica que coordina varios componentes vive en los **sistemas** del motor.
+ * - Usar interfaces virtuales puras fuerza a que todas las clases hijas implementen los mï¿½todos clave (`init`, `update`, `render`, `destroy`).
+ *
+ * @note [GameDev] En Unreal Engine, UActorComponent es el equivalente: una clase base
+ * abstracta con BeginPlay / TickComponent. La diferencia es que UE usa el sistema de
+ * reflection (UCLASS/UPROPERTY) para serializar componentes al editor y a disco.
+ * En este motor, ComponentType enum permite hacer "type-safe downcast" sin dynamic_cast
+ * cuando el tipo ya es conocido por diseÃ±o (por ejemplo, siempre hay un Transform).
+ * En un ECS puro, Component no seria una clase virtual sino una struct de datos plana;
+ * el polimorfismo virtual tiene un costo de vtable lookup por llamada que se evita en ECS.
  */
 class Component {
 public:
@@ -28,9 +36,9 @@ public:
 
     /**
      * @brief Constructor que asigna el tipo del componente.
-     * @param type Enumeración `ComponentType` que identifica el tipo.
+     * @param type Enumeraciï¿½n `ComponentType` que identifica el tipo.
      *
-     * @note Esto permite saber en tiempo de ejecución qué tipo de componente es sin usar `dynamic_cast`.
+     * @note Esto permite saber en tiempo de ejecuciï¿½n quï¿½ tipo de componente es sin usar `dynamic_cast`.
      */
     Component(const ComponentType type) : m_type(type) {}
 
@@ -46,7 +54,7 @@ public:
 
     /**
      * @brief Actualiza el estado del componente.
-     * @param deltaTime Tiempo (en segundos) desde la última actualización.
+     * @param deltaTime Tiempo (en segundos) desde la ï¿½ltima actualizaciï¿½n.
      *
      * @note Ejemplos:
      * - En un `TransformComponent`: interpolar posiciones.
@@ -58,7 +66,7 @@ public:
      * @brief Renderiza el componente (si aplica).
      * @param deviceContext Contexto de dispositivo para emitir draw calls.
      *
-     * @note Un componente de render usará esto para dibujar; uno de física podría dejarlo vacío.
+     * @note Un componente de render usarï¿½ esto para dibujar; uno de fï¿½sica podrï¿½a dejarlo vacï¿½o.
      */
     virtual void render(DeviceContext& deviceContext) = 0;
 
@@ -71,10 +79,10 @@ public:
 
     /**
      * @brief Obtiene el tipo del componente.
-     * @return Enumeración `ComponentType` que identifica el tipo.
+     * @return Enumeraciï¿½n `ComponentType` que identifica el tipo.
      */
     ComponentType getType() const { return m_type; }
 
 protected:
-    ComponentType m_type; ///< Tipo del componente, usado para identificación y casting seguro.
+    ComponentType m_type; ///< Tipo del componente, usado para identificaciï¿½n y casting seguro.
 };

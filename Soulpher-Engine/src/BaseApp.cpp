@@ -17,6 +17,14 @@
  *  6) Constant buffers de cámara.
  *  7) Escena (actores y texturas).
  *  8) Inicialización de ImGui.
+ *
+ * @note [GameDev] El bucle init/update/render/destroy es el patron universal de motores:
+ *  - init():    carga recursos, crea el mundo (equivale a BeginPlay en Unreal).
+ *  - update():  logica del juego + actualizacion de transforms (equivale a Tick).
+ *  - render():  envio de draw calls a la GPU (equivale al render thread en Unreal).
+ *  - destroy(): libera recursos al cerrar (equivale a EndPlay + destruccion de actores).
+ * La camara orbital con raton es un controlador de debug, no un actor ECS real.
+ * En produccion se implementaria como un CameraComponent con una CameraManager.
  */
 
 #include "BaseApp.h"
@@ -145,9 +153,11 @@ HRESULT BaseApp::init()
         // Luz diagonal normalizada: (0.3, -1, 0.5) / ||(0.3,-1,0.5)||
         float lx = 0.30f, ly = -1.0f, lz = 0.50f;
         float len = sqrtf(lx*lx + ly*ly + lz*lz);
-        m_cbPerFrame.LightDir   = EU::Vector3(lx/len, ly/len, lz/len);
-        m_cbPerFrame.LightColor = EU::Vector3(1.0f, 1.0f, 1.0f);
-        m_cbPerFrame.ShadowBias = 0.003f;
+        m_cbPerFrame.LightDir      = EU::Vector3(lx/len, ly/len, lz/len);
+        m_cbPerFrame.LightColor    = EU::Vector3(1.0f, 1.0f, 1.0f);
+        m_cbPerFrame.LightRange    = 10.0f;
+        m_cbPerFrame.LightPosition = EU::Vector3(0.0f, 3.0f, 0.0f);
+        m_cbPerFrame.LightType     = 0; // Directional
     }
 
     // 10) Actor: Martis Ashura King (FBX) — fallo no fatal, continúa sin el modelo
@@ -359,11 +369,13 @@ void BaseApp::update()
     // --- UI frame ---
     m_userInterface.update();
 
-    // Panel de iluminación/sombras (modifica m_cbPerFrame.LightDir/Color y ShadowBias)
+    // Panel de iluminación (modifica m_cbPerFrame.LightDir/Color)
+    // shadowBias local: el slider UI lo modifica pero el shader usa 0.003f hardcodeado
+    static float s_shadowBias = 0.003f;
     m_userInterface.lightPanel(
         &m_cbPerFrame.LightDir.x,
         &m_cbPerFrame.LightColor.x,
-        m_cbPerFrame.ShadowBias
+        s_shadowBias
     );
 
     // Inspector + Outliner
@@ -465,7 +477,7 @@ void BaseApp::update()
     // ----------------------------------------------------
 
     // Subir CBPerFrame (b0): vista, proyeccion, camara
-    // LightDir/LightColor/ShadowBias son controlados por lightPanel() — no sobreescribir aqui
+    // LightDir/LightColor son controlados por lightPanel() — no sobreescribir aqui
     XMStoreFloat4x4(&m_cbPerFrame.View,       XMMatrixTranspose(m_View));
     XMStoreFloat4x4(&m_cbPerFrame.Projection, XMMatrixTranspose(m_Projection));
     m_cbPerFrame.CameraPos = EU::Vector3(m_camPos.x, m_camPos.y, m_camPos.z);

@@ -1,13 +1,22 @@
 /**
  * @file ShaderProgram.cpp
- * @brief Implementación de la clase ShaderProgram para compilar, crear y gestionar shaders en Direct3D 11.
+ * @brief Implementaciï¿½n de la clase ShaderProgram para compilar, crear y gestionar shaders en Direct3D 11.
  *
  * @details
  * Esta clase permite:
  * - Compilar shaders desde archivos HLSL.
  * - Crear Vertex Shader, Pixel Shader y el Input Layout correspondiente.
- * - Configurar el pipeline gráfico con los shaders compilados.
+ * - Configurar el pipeline grï¿½fico con los shaders compilados.
  * - Destruir y liberar los recursos asociados.
+ *
+ * @note [GameDev] CompileShaderFromFile usa D3DX11CompileFromFile con shader model
+ * vs_4_0 / ps_4_0 (Feature Level 10.0). Para usar caracteristicas DX11 completas
+ * (geometry shaders, compute shaders, stream output) se usaria vs_5_0 / ps_5_0.
+ * El ID3DBlob del VS se guarda en m_vertexShaderData porque CreateInputLayout lo
+ * necesita para validar los semantics contra el HLSL. Una vez creado el IL, el blob
+ * puede liberarse (CreateInputLayout ya lo hizo al terminar).
+ * En produccion se usaria D3DCompileFromFile (D3DCompiler.h moderno, no D3DX11) y
+ * los resultados se cachean a disco para evitar recompilacion en cada arranque.
  */
 
 #include "ShaderProgram.h"
@@ -22,8 +31,8 @@ ShaderProgram::init(Device& device,
      * @brief Inicializa el programa de shaders con un Vertex Shader, Pixel Shader y su Input Layout.
      * @param device Referencia al dispositivo Direct3D 11.
      * @param fileName Ruta del archivo HLSL.
-     * @param Layout Descripción de los elementos de entrada (Input Layout).
-     * @return HRESULT S_OK si se inicializó correctamente, o código de error en caso contrario.
+     * @param Layout Descripciï¿½n de los elementos de entrada (Input Layout).
+     * @return HRESULT S_OK si se inicializï¿½ correctamente, o cï¿½digo de error en caso contrario.
      */
     if (!device.m_device) {
         ERROR("ShaderProgram", "init", "Device is null.");
@@ -69,8 +78,8 @@ ShaderProgram::CreateInputLayout(Device& device,
     /**
      * @brief Crea el Input Layout usando los datos del Vertex Shader.
      * @param device Referencia al dispositivo Direct3D 11.
-     * @param Layout Descripción de la estructura de vértices.
-     * @return HRESULT S_OK si se creó correctamente, o código de error en caso contrario.
+     * @param Layout Descripciï¿½n de la estructura de vï¿½rtices.
+     * @return HRESULT S_OK si se creï¿½ correctamente, o cï¿½digo de error en caso contrario.
      */
     if (!m_vertexShaderData) {
         ERROR("ShaderProgram", "CreateInputLayout", "Vertex shader data is null.");
@@ -102,7 +111,7 @@ ShaderProgram::CreateShader(Device& device, ShaderType type) {
      * @brief Compila y crea un shader de tipo Vertex o Pixel.
      * @param device Referencia al dispositivo Direct3D 11.
      * @param type Tipo de shader (VERTEX_SHADER o PIXEL_SHADER).
-     * @return HRESULT S_OK si se creó correctamente, o código de error en caso contrario.
+     * @return HRESULT S_OK si se creï¿½ correctamente, o cï¿½digo de error en caso contrario.
      */
     if (!device.m_device) {
         ERROR("ShaderProgram", "CreateShader", "Device is null.");
@@ -172,7 +181,7 @@ ShaderProgram::CreateShader(Device& device, ShaderType type, const std::string& 
      * @param device Referencia al dispositivo Direct3D 11.
      * @param type Tipo de shader.
      * @param fileName Ruta del archivo HLSL.
-     * @return HRESULT S_OK si se creó correctamente, o código de error.
+     * @return HRESULT S_OK si se creï¿½ correctamente, o cï¿½digo de error.
      */
     if (!device.m_device) {
         ERROR("ShaderProgram", "init", "Device is null.");
@@ -196,10 +205,10 @@ ShaderProgram::CompileShaderFromFile(char* szFileName,
     /**
      * @brief Compila un shader desde un archivo HLSL.
      * @param szFileName Ruta del archivo HLSL.
-     * @param szEntryPoint Punto de entrada (función principal) del shader.
+     * @param szEntryPoint Punto de entrada (funciï¿½n principal) del shader.
      * @param szShaderModel Modelo de shader a usar (ej. vs_4_0, ps_4_0).
      * @param ppBlobOut Puntero para recibir el bytecode compilado.
-     * @return HRESULT S_OK si se compila correctamente, o código de error.
+     * @return HRESULT S_OK si se compila correctamente, o cï¿½digo de error.
      */
     HRESULT hr = S_OK;
     DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
@@ -242,7 +251,7 @@ ShaderProgram::CompileShaderFromFile(char* szFileName,
 
 void
 ShaderProgram::update() {
-    /** @brief Método vacío, reservado para futura lógica de actualización de shaders. */
+    /** @brief Mï¿½todo vacï¿½o, reservado para futura lï¿½gica de actualizaciï¿½n de shaders. */
 }
 
 void
@@ -264,7 +273,7 @@ ShaderProgram::render(DeviceContext& deviceContext) {
 void
 ShaderProgram::render(DeviceContext& deviceContext, ShaderType type) {
     /**
-     * @brief Activa únicamente un shader específico.
+     * @brief Activa ï¿½nicamente un shader especï¿½fico.
      * @param deviceContext Contexto de dispositivo.
      * @param type Tipo de shader a activar.
      */

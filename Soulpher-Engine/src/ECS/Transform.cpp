@@ -14,6 +14,14 @@
  * - El orden de multiplicación es importante: **escala → rotación → traslación**.
  * - Este patrón es común en motores de videojuegos y se basa en la matemática de
  *   transformaciones en gráficos 3D.
+ *
+ * @note [GameDev] El orden de composicion SRT (Scale * Rotation * Translation) es
+ * el estandar para matrices World en motores row-major como DirectX.
+ * Invertirelorden produce resultados distintos: TRS escala en espacio mundo (inusual),
+ * SRT escala en espacio local del objeto (lo esperado).
+ * XMMatrixRotationRollPitchYaw usa angulos de Euler (X=pitch, Y=yaw, Z=roll) que son
+ * intuitivos pero susceptibles a gimbal lock. Para animaciones, los motores AAA usan
+ * quaterniones (XMVECTOR + XMQuaternionRotationRollPitchYaw) para interpolar correctamente.
  */
 
 #include "ECS/Transform.h"

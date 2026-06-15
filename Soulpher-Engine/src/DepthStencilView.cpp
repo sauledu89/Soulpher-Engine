@@ -11,6 +11,13 @@
  * - El DSV se asocia normalmente a un **Depth Stencil Buffer** (textura 2D especial).
  * - En la etapa Output Merger (OM), el DSV se usa junto al Render Target View (RTV).
  * - El formato (`DXGI_FORMAT`) y el tipo (`ViewDimension`) dependen de la textura.
+ *
+ * @note [GameDev] En Soulpher-Engine hay DOS DSVs:
+ *  1. DSV del back buffer (DepthStencilView en BaseApp) con formato D24_UNORM_S8_UINT.
+ *  2. DSV del shadow map (m_shadowDSV en ForwardRenderer) con el MISMO formato,
+ *     pero creado sobre una textura R24G8_TYPELESS que tambien tiene un SRV alias.
+ * El truco TYPELESS permite que la GPU escriba el shadow map via DSV y luego lo lea
+ * como SRV en el pixel shader, todo sobre la misma VRAM sin copiar.
  */
 
 #include "DepthStencilView.h"
@@ -97,6 +104,41 @@ void DepthStencilView::render(DeviceContext& deviceContext) {
         1.0f,
         0
     );
+}
+
+/**
+ * @brief Sobrecarga que permite especificar la dimensión de la vista explícitamente.
+ * @param device        Dispositivo D3D11.
+ * @param depthStencil  Textura de profundidad.
+ * @param format        Formato DXGI del DSV.
+ * @param viewDimension Dimensión del view (TEXTURE2D, TEXTURE2DMS, etc.).
+ * @return HRESULT S_OK si ok.
+ */
+HRESULT DepthStencilView::init(Device& device, Texture& depthStencil,
+                                DXGI_FORMAT format, D3D11_DSV_DIMENSION viewDimension) {
+    if (!device.m_device) {
+        ERROR("DepthStencilView", "init", "Device is null.");
+        return E_POINTER;
+    }
+    if (!depthStencil.m_texture) {
+        ERROR("DepthStencilView", "init", "Texture is null.");
+        return E_POINTER;
+    }
+
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+    dsvDesc.Format        = format;
+    dsvDesc.ViewDimension = viewDimension;
+    if (viewDimension == D3D11_DSV_DIMENSION_TEXTURE2D)
+        dsvDesc.Texture2D.MipSlice = 0;
+
+    HRESULT hr = device.m_device->CreateDepthStencilView(
+        depthStencil.m_texture, &dsvDesc, &m_depthStencilView);
+    if (FAILED(hr)) {
+        ERROR("DepthStencilView", "init",
+            ("Failed to create DSV (explicit dim). HRESULT: " + std::to_string(hr)).c_str());
+        return hr;
+    }
+    return S_OK;
 }
 
 /**

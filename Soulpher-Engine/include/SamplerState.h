@@ -1,3 +1,22 @@
+/**
+ * @file SamplerState.h
+ * @brief Encapsula el estado de muestreo de texturas (Sampler State) de Direct3D 11.
+ *
+ * @details
+ * El Sampler State define como el hardware de GPU lee texeles de una textura:
+ *  - Filtrado (AddressMode): Wrap, Clamp, Mirror, Border â€” que hacer al salir del rango [0,1] UV.
+ *  - Filtrado de magnificacion/minificacion: Point, Bilinear, Trilinear, Anisotropic.
+ *  - Comparison samplers: para shadow mapping (LESS_EQUAL), usados por SampleCmpLevelZero en HLSL.
+ *
+ * @note [GameDev] El filtrado anisotropico (AF) es el que mas impacta la calidad visual de
+ * superficies en angulo: texturas del suelo o paredes se ven borrosas sin AF. El costo en
+ * GPU modernas es bajo (menos del 5%). Trilinear elimina el "mip seam" (linea donde cambia
+ * el mipmap). En Soulpher-Engine se usa un sampler para texturas de color y otro de
+ * comparacion para el shadow map (PCF en Soulpher-Engine.fx).
+ *
+ * @see Device, Texture, ForwardRenderer, ShaderProgram
+ */
+
 #pragma once
 #include "Prerequisites.h"
 
@@ -9,19 +28,19 @@ class DeviceContext;
  * @brief Administra el estado de muestreo de texturas en Direct3D 11.
  *
  * @details
- * Un **Sampler State** define cómo un shader accede a las texturas en GPU,
+ * Un **Sampler State** define cï¿½mo un shader accede a las texturas en GPU,
  * controlando aspectos como:
- * - Tipo de filtrado (point, bilinear, trilinear, anisotrópico).
- * - Dirección de muestreo (wrap, clamp, mirror).
+ * - Tipo de filtrado (point, bilinear, trilinear, anisotrï¿½pico).
+ * - Direcciï¿½n de muestreo (wrap, clamp, mirror).
  * - Comparaciones y bias para sampling avanzado.
  *
  * Esta clase encapsula:
- * - Creación de un `ID3D11SamplerState` con parámetros de muestreo.
- * - Asignación del muestreador a un slot específico del shader.
- * - Liberación de recursos.
+ * - Creaciï¿½n de un `ID3D11SamplerState` con parï¿½metros de muestreo.
+ * - Asignaciï¿½n del muestreador a un slot especï¿½fico del shader.
+ * - Liberaciï¿½n de recursos.
  *
  * @note En motores de videojuegos, cambiar el `SamplerState` puede afectar
- * drásticamente la calidad visual de texturas, especialmente en entornos 3D.
+ * drï¿½sticamente la calidad visual de texturas, especialmente en entornos 3D.
  */
 class SamplerState {
 public:
@@ -29,9 +48,9 @@ public:
     ~SamplerState() = default; ///< Destructor por defecto.
 
     /**
-     * @brief Inicializa el estado de muestreo con configuración por defecto.
-     * @param device Dispositivo Direct3D donde se creará el estado.
-     * @return HRESULT que indica éxito o error de la operación.
+     * @brief Inicializa el estado de muestreo con configuraciï¿½n por defecto.
+     * @param device Dispositivo Direct3D donde se crearï¿½ el estado.
+     * @return HRESULT que indica ï¿½xito o error de la operaciï¿½n.
      *
      * @note
      * Un muestreador por defecto suele usar filtrado bilinear
@@ -40,11 +59,11 @@ public:
     HRESULT init(Device& device);
 
     /**
-     * @brief Actualiza parámetros internos si es necesario.
+     * @brief Actualiza parï¿½metros internos si es necesario.
      *
      * @note
-     * Generalmente no se usa con frecuencia, pero puede ser útil para
-     * cambiar filtrado o dirección de muestreo en tiempo real.
+     * Generalmente no se usa con frecuencia, pero puede ser ï¿½til para
+     * cambiar filtrado o direcciï¿½n de muestreo en tiempo real.
      */
     void update();
 
@@ -52,10 +71,10 @@ public:
      * @brief Aplica el estado de muestreo al contexto de dispositivo.
      * @param deviceContext Contexto de dispositivo donde aplicar el estado.
      * @param StartSlot Primer slot de muestreador en el shader.
-     * @param NumSamplers Número de muestreadores a asignar.
+     * @param NumSamplers Nï¿½mero de muestreadores a asignar.
      *
      * @note
-     * Este método debe llamarse antes de dibujar, para que el shader
+     * Este mï¿½todo debe llamarse antes de dibujar, para que el shader
      * use el muestreador configurado.
      */
     void render(DeviceContext& deviceContext,
@@ -66,7 +85,7 @@ public:
      * @brief Libera los recursos asociados.
      *
      * @warning
-     * No liberar este recurso causará fugas de memoria GPU.
+     * No liberar este recurso causarï¿½ fugas de memoria GPU.
      */
     void destroy();
 

@@ -1,6 +1,37 @@
 /**
  * @file ForwardRenderer.cpp
- * @brief Shadow map renderer: depth pass (light POV) + shadow map binding.
+ * @brief Implementacion del ForwardRenderer: shadow depth pass + binding del shadow map.
+ *
+ * @details
+ * Este archivo implementa los dos passes de Forward Rendering con shadow maps:
+ *
+ *  **Recursos del shadow map (init)**:
+ *   - DXGI_FORMAT_R24G8_TYPELESS: formato "sin tipo" que permite crear un DSV
+ *     (D24_UNORM_S8_UINT) Y un SRV (R24_UNORM_X8_TYPELESS) sobre la MISMA textura.
+ *     Sin TYPELESS esto seria imposible porque DX11 no permite usar un D24 como SRV.
+ *   - El Input Layout del shadow shader solo declara POSITION (12 bytes) aunque el
+ *     vertex buffer tiene SimpleVertex de 56 bytes. El stride lo define el VB, no el IL.
+ *
+ *  **renderShadowPass**:
+ *   - Desvincula el SRV (unbindShadowMap) antes de escribir en el DSV para evitar
+ *     hazards de lectura/escritura en la misma textura.
+ *   - CBPerFrame (b0 con LightViewProjection) debe estar ya en GPU antes de llamar.
+ *
+ *  **computeLightViewProj**:
+ *   - Usa proyeccion ortografica para luz direccional (sin perspectiva).
+ *   - El frustum cubre una esfera de radio sceneRadius centrada en sceneCenter.
+ *   - Singularidad evitada al elegir up=Z cuando la luz apunta casi vertical.
+ *
+ * @note [GameDev] El truco TYPELESS es el patron estandar para shadow maps en DX11.
+ * En DX12 el sistema de barriers (resource state transitions) maneja explicitamente
+ * cuando una textura cambia de D3D12_RESOURCE_STATE_DEPTH_WRITE a
+ * D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, haciendo mas visible el hazard.
+ * La proyeccion ortografica es ideal para luces direccionales (como el sol) porque
+ * no tienen posicion. Las luces puntuales usan shadow cubemaps (6 caras = 6 depth passes).
+ * Cascaded Shadow Maps (CSM) dividen el frustum de la camara en N zonas con resoluciones
+ * decrecientes — el estandar en Unreal Engine y Unity para luces del sol en exterior.
+ *
+ * @see ForwardRenderer.h, Soulpher-Engine.fx, CBPerFrame, BaseApp
  */
 
 #include "Rendering/ForwardRenderer.h"

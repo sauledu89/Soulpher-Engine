@@ -5,19 +5,29 @@
 
 /**
  * @file ModelLoader.h
- * @brief Carga y procesa modelos 3D en formatos OBJ y FBX para el motor The Visionary.
+ * @brief Carga y procesa modelos 3D en formatos OBJ y FBX â€” pipeline de assets de Soulpher-Engine.
  *
  * @details
  * `ModelLoader` se encarga de:
  * - Leer archivos OBJ y FBX.
- * - Extraer geometría (vértices, índices) y materiales.
- * - Cargar información de texturas.
+ * - Extraer geometrï¿½a (vï¿½rtices, ï¿½ndices) y materiales.
+ * - Cargar informaciï¿½n de texturas.
  * - Generar `MeshComponent` listos para su uso en el renderizado.
  *
  * @note Para estudiantes:
- * - Los modelos OBJ son simples: solo contienen geometría y referencias a materiales (MTL).
- * - Los modelos FBX son más complejos: pueden incluir jerarquías de nodos, animaciones, esqueleto, materiales y múltiples UVs.
- * - Este loader se enfoca en obtener **mallas estáticas** listas para usar, pero se puede ampliar para animaciones.
+ * - Los modelos OBJ son simples: solo contienen geometrï¿½a y referencias a materiales (MTL).
+ * - Los modelos FBX son mï¿½s complejos: pueden incluir jerarquï¿½as de nodos, animaciones, esqueleto, materiales y mï¿½ltiples UVs.
+ * - Este loader se enfoca en obtener **mallas estï¿½ticas** listas para usar, pero se puede ampliar para animaciones.
+ *
+ * @note [GameDev] El FBX SDK de Autodesk (2020.3.7) es el estandar de facto para
+ * intercambio de assets 3D entre DCC tools (Maya, Blender, 3ds Max) y motores.
+ * ProcessFBXMesh hace triangulacion automatica, correccion UV (flip V) y ensambla la
+ * transformacion global del nodo para importar modelos con transformaciones embebidas.
+ * La TBN (Tangent-Bitangent-Normal) se genera con Gram-Schmidt para ortogonalizar la
+ * base tangente, necesaria para los normal maps en el pixel shader.
+ * En Unreal Engine el pipeline equivalente es el FBX Import con el Interchange plugin
+ * (UE5+). Los motores de produccion cachean los assets en un formato binario propio
+ * (como el .uasset de UE) para evitar el costo de procesar el FBX en cada startup.
  */
 class ModelLoader {
 public:
@@ -30,17 +40,17 @@ public:
     /**
      * @brief Carga un modelo en formato OBJ.
      * @param filePath Ruta del archivo OBJ.
-     * @return Un `MeshComponent` con la geometría cargada.
+     * @return Un `MeshComponent` con la geometrï¿½a cargada.
      *
      * @note
-     * - No soporta animaciones ni jerarquías, solo mallas estáticas.
+     * - No soporta animaciones ni jerarquï¿½as, solo mallas estï¿½ticas.
      * - Busca un archivo `.mtl` asociado para materiales.
      */
     MeshComponent LoadOBJModel(const std::string& filePath);
 
     /**
      * @brief Inicializa el administrador de FBX SDK.
-     * @return `true` si la inicialización fue exitosa.
+     * @return `true` si la inicializaciï¿½n fue exitosa.
      *
      * @note El FBX SDK debe estar inicializado antes de cargar modelos FBX.
      */
@@ -49,10 +59,10 @@ public:
     /**
      * @brief Carga un modelo en formato FBX.
      * @param filePath Ruta del archivo FBX.
-     * @return `true` si el modelo se cargó correctamente.
+     * @return `true` si el modelo se cargï¿½ correctamente.
      *
      * @note
-     * - Puede contener múltiples nodos y mallas.
+     * - Puede contener mï¿½ltiples nodos y mallas.
      * - Requiere haber llamado antes a `InitializeFBXManager()`.
      */
     bool LoadFBXModel(const std::string& filePath);
@@ -61,7 +71,7 @@ public:
      * @brief Procesa recursivamente un nodo de la escena FBX.
      * @param node Puntero al nodo FBX.
      *
-     * @note Recorre jerarquías para encontrar mallas y materiales.
+     * @note Recorre jerarquï¿½as para encontrar mallas y materiales.
      */
     void ProcessFBXNode(FbxNode* node);
 
@@ -69,7 +79,7 @@ public:
      * @brief Procesa una malla asociada a un nodo FBX.
      * @param node Puntero al nodo que contiene la malla.
      *
-     * @note Extrae vértices, normales, UVs e índices para generar un `MeshComponent`.
+     * @note Extrae vï¿½rtices, normales, UVs e ï¿½ndices para generar un `MeshComponent`.
      */
     void ProcessFBXMesh(FbxNode* node);
 
@@ -77,12 +87,12 @@ public:
      * @brief Procesa los materiales asociados a un modelo FBX.
      * @param material Puntero al material FBX.
      *
-     * @note Busca texturas difusas, especulares, normales, etc., y las añade a la lista `textureFileNames`.
+     * @note Busca texturas difusas, especulares, normales, etc., y las aï¿½ade a la lista `textureFileNames`.
      */
     void ProcessFBXMaterials(FbxSurfaceMaterial* material);
 
     /**
-     * @brief Obtiene los nombres de archivos de texturas extraídos.
+     * @brief Obtiene los nombres de archivos de texturas extraï¿½dos.
      * @return Vector con rutas o nombres de archivos de textura.
      */
     std::vector<std::string> GetTextureFileNames() const { return textureFileNames; }
@@ -94,5 +104,5 @@ private:
 
 public:
     std::string modelName; ///< Nombre del modelo cargado.
-    std::vector<MeshComponent> meshes; ///< Lista de mallas extraídas del modelo.
+    std::vector<MeshComponent> meshes; ///< Lista de mallas extraï¿½das del modelo.
 };

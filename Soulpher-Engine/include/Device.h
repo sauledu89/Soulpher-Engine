@@ -1,17 +1,26 @@
 /**
  * @file Device.h
- * @brief Encapsula la creación y gestión del dispositivo Direct3D 11.
+ * @brief Encapsula la creaciï¿½n y gestiï¿½n del dispositivo Direct3D 11.
  *
  * @details
  * El `Device` es el objeto central de Direct3D 11 encargado de:
- * - Crear recursos gráficos (texturas, buffers, shaders, estados…).
- * - Comunicarse con la GPU para la preparación de estos recursos.
+ * - Crear recursos grï¿½ficos (texturas, buffers, shaders, estadosï¿½).
+ * - Comunicarse con la GPU para la preparaciï¿½n de estos recursos.
  *
  * @note Para estudiantes:
  * - Este objeto **no dibuja nada directamente**, solo crea recursos.
  * - Para enviar comandos de renderizado se usa `DeviceContext`.
- * - En DX11, el `ID3D11Device` es thread-safe para creación de recursos,
+ * - En DX11, el `ID3D11Device` es thread-safe para creaciï¿½n de recursos,
  *   pero el `ID3D11DeviceContext` no lo es.
+ *
+ * @note [GameDev] La separacion Device/DeviceContext en DX11 sigue el patron "Factory vs Executor":
+ * el Device crea y aloca recursos (equivale a manejar GPU memory), mientras el DeviceContext
+ * emite comandos de render (equivale a grabar en un command buffer).
+ * En DX12 y Vulkan esta separacion es mas explicita: ID3D12Device/VkDevice == allocator,
+ * ID3D12CommandList/VkCommandBuffer == contexto de comandos.
+ * En Unreal Engine, FRHIDevice y FRHICommandList cumplen roles analogos.
+ * El DeviceContext no ser thread-safe en DX11 obliga a serializar comandos desde un hilo
+ * de render dedicado o usar Deferred Contexts para grabacion multi-hilo.
  */
 
 #pragma once
@@ -19,17 +28,17 @@
 
  /**
   * @class Device
-  * @brief Encapsula un `ID3D11Device` y métodos para crear recursos gráficos en Direct3D 11.
+  * @brief Encapsula un `ID3D11Device` y mï¿½todos para crear recursos grï¿½ficos en Direct3D 11.
   *
   * @details
-  * Esta clase abstrae las funciones de creación de recursos de Direct3D 11:
+  * Esta clase abstrae las funciones de creaciï¿½n de recursos de Direct3D 11:
   * - Render Target Views (RTV)
   * - Depth Stencil Views (DSV)
   * - Shaders (vertex y pixel)
   * - Buffers (vertex, index, constant)
   * - Estados de renderizado (sampler, blend, depth/stencil, rasterizer)
   *
-  * @note El patrón usado aquí es **wrapper de API**, lo que simplifica el código
+  * @note El patrï¿½n usado aquï¿½ es **wrapper de API**, lo que simplifica el cï¿½digo
   *       de alto nivel y permite centralizar el manejo de errores.
   */
 class Device {
@@ -43,11 +52,11 @@ public:
     /**
      * @brief Inicializa el dispositivo Direct3D 11.
      *
-     * @note Normalmente se invoca junto con la creación de un `SwapChain`.
+     * @note Normalmente se invoca junto con la creaciï¿½n de un `SwapChain`.
      */
     void init();
 
-    /** @brief Actualiza el estado del dispositivo (sin implementación por ahora). */
+    /** @brief Actualiza el estado del dispositivo (sin implementaciï¿½n por ahora). */
     void update();
 
     /** @brief Renderiza contenido usando el dispositivo (placeholder). */
@@ -56,7 +65,7 @@ public:
     /** @brief Libera los recursos asociados al dispositivo. */
     void destroy();
 
-    // ==== Creación de recursos Direct3D ====
+    // ==== Creaciï¿½n de recursos Direct3D ====
 
     /** @brief Crea una vista de renderizado (Render Target View, RTV). */
     HRESULT CreateRenderTargetView(ID3D11Resource* pResource,
@@ -79,7 +88,7 @@ public:
         ID3D11ClassLinkage* pClassLinkage,
         ID3D11VertexShader** ppVertexShader);
 
-    /** @brief Crea un input layout para el pipeline de entrada de vértices. */
+    /** @brief Crea un input layout para el pipeline de entrada de vï¿½rtices. */
     HRESULT CreateInputLayout(const D3D11_INPUT_ELEMENT_DESC* pInputElementDescs,
         unsigned int NumElements,
         const void* pShaderBytecodeWithInputSignature,

@@ -1,6 +1,6 @@
 ﻿/**
  * @file Prerequisites.h
- * @brief Definiciones base, utilidades y tipos comunes para The Visionary Engine.
+ * @brief Definiciones base, utilidades y tipos del núcleo de Soulpher-Engine.
  *
  * @details
  * Este archivo actúa como punto central de inclusión de:
@@ -11,6 +11,16 @@
  *
  * @note Es uno de los primeros archivos que se compilan, por lo que otros headers dependen de él.
  * @warning Un cambio aquí puede requerir recompilar la mayoría del proyecto.
+ *
+ * @note [GameDev] xnamath.h es la librería matemática legacy de DirectX (era DX9/XNA).
+ * Proyectos modernos usan DirectXMath.h (incluida en el Windows SDK desde DX11.1), pero
+ * xnamath sigue siendo funcional y compatible. El \#undef min/max es necesario porque
+ * windows.h define min() y max() como macros, lo que rompe std::min / std::max.
+ * Los punteros EU::TSharedPointer/TWeakPointer/TUniquePtr son los smart pointers propios
+ * del motor; NUNCA deben usarse std::shared_ptr/unique_ptr en su lugar.
+ * Las structs CBNeverChanges, CBChangeOnResize y CBChangesEveryFrame son legacy del
+ * tutorial de DX11 original. El pipeline moderno del motor usa CBPerFrame/CBPerObject/
+ * CBPerMaterial definidos en RenderTypes.h.
  */
 
 #pragma once
@@ -34,10 +44,12 @@
 #include "resource.h"   ///< Recursos de Windows.
 
 // === Librerías de utilidades propias del motor ===
-#include "EngineUtilities\Memory\TSharedPointer.h" ///< Puntero inteligente compartido.
-#include "EngineUtilities\Memory\TWeakPointer.h"   ///< Puntero inteligente débil.
-#include "EngineUtilities\Memory\TStaticPtr.h"     ///< Puntero estático.
-#include "EngineUtilities\Memory\TUniquePtr.h"     ///< Puntero inteligente único.
+#include "EngineUtilities\Memory\TSharedPointer.h"  ///< Puntero inteligente compartido.
+#include "EngineUtilities\Memory\TWeakPointer.h"    ///< Puntero inteligente débil.
+#include "EngineUtilities\Memory\TStaticPtr.h"      ///< Puntero estático.
+#include "EngineUtilities\Memory\TUniquePtr.h"      ///< Puntero inteligente único.
+#include "EngineUtilities\Vectors\Vector3.h"        ///< EU::Vector3 — usado en SimpleVertex y CBPerFrame.
+#include "EngineUtilities\Vectors\Vector2.h"        ///< EU::Vector2 — usado en SimpleVertex.
 
 // === Macros de utilidad ===
 
@@ -84,6 +96,20 @@ struct SimpleVertex {
     XMFLOAT3 Tangent;
     XMFLOAT3 Bitangent;
     XMFLOAT2 Tex;
+
+    SimpleVertex() = default;
+
+    // Constructor desde XMFLOAT3/XMFLOAT2 — usado por ModelLoader y BaseApp
+    SimpleVertex(XMFLOAT3 pos, XMFLOAT3 normal, XMFLOAT3 tangent, XMFLOAT3 bitangent, XMFLOAT2 tex)
+        : Pos(pos), Normal(normal), Tangent(tangent), Bitangent(bitangent), Tex(tex) {}
+
+    // Constructor desde EU::Vector3/EU::Vector2 — usado por DeferredRenderer
+    SimpleVertex(const EU::Vector3& pos, const EU::Vector3& normal,
+                 const EU::Vector3& tangent, const EU::Vector3& bitangent,
+                 const EU::Vector2& tex)
+        : Pos(pos.x, pos.y, pos.z), Normal(normal.x, normal.y, normal.z),
+          Tangent(tangent.x, tangent.y, tangent.z), Bitangent(bitangent.x, bitangent.y, bitangent.z),
+          Tex(tex.x, tex.y) {}
 };
 
 /**

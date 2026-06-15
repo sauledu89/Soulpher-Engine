@@ -12,54 +12,51 @@
  * - Profundidad evita que se dibujen píxeles “detrás” de otros.
  * - Stencil permite efectos como espejos, outlines y máscaras.
  * - `OMSetDepthStencilState` establece el estado en la etapa Output Merger.
+ *
+ * @note [GameDev] Durante el shadow depth pass, ForwardRenderer solo necesita el DSV
+ * (ningun RTV) y el depth write debe estar activo. Durante el color pass normal,
+ * el depth test es LESS (se dibuja si es mas cercano que lo que ya hay).
+ * El DepthStencilState con enableDepth=false se usa para el renderShadow() legacy del Actor
+ * (sombra proyectada plana) porque esa geometria proyectada esta exactamente sobre el suelo
+ * y fallaria el depth test normal (z-fighting).
  */
 
 #include "DepthStencilState.h"
 #include "Device.h"
 #include "DeviceContext.h"
 
- /**
-  * @brief Inicializa el estado de profundidad/stencil.
-  * @param device        Dispositivo D3D11.
-  * @param enableDepth   Activa/desactiva la prueba de profundidad.
-  * @param enableStencil Activa/desactiva la prueba de stencil.
-  * @return HRESULT S_OK si ok, o código de error en fallo.
-  *
-  * @note
-  * - DepthFunc = LESS: el fragmento se dibuja si su Z es menor (más cerca).
-  * - Stencil por defecto con KEEP/INCR/DECR y ALWAYS como comparación.
-  */
-HRESULT DepthStencilState::init(Device& device, bool enableDepth, bool enableStencil) {
+/**
+ * @brief Inicializa el estado de profundidad.
+ * @param device      Dispositivo D3D11.
+ * @param enableDepth Activa/desactiva la prueba de profundidad.
+ * @param writeMask   Máscara de escritura del depth buffer.
+ * @param compareFunc Función de comparación de profundidad.
+ * @return HRESULT S_OK si ok, o código de error en fallo.
+ *
+ * @note [GameDev] Los tres estados más usados en deferred rendering:
+ *  - init(device, true, D3D11_DEPTH_WRITE_MASK_ALL, LESS)       → opaco/shadow (default).
+ *  - init(device, true, D3D11_DEPTH_WRITE_MASK_ZERO, LESS_EQUAL) → transparentes.
+ *  - init(device, false)                                          → fullscreen quad lighting.
+ */
+HRESULT DepthStencilState::init(Device& device,
+                                 bool                   enableDepth,
+                                 D3D11_DEPTH_WRITE_MASK writeMask,
+                                 D3D11_COMPARISON_FUNC  compareFunc) {
     if (!device.m_device) {
         ERROR("DepthStencilState", "init", "Device is null.");
         return E_POINTER;
     }
 
     D3D11_DEPTH_STENCIL_DESC desc = {};
-    desc.DepthEnable = enableDepth;
-    desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    desc.DepthFunc = D3D11_COMPARISON_LESS;
-
-    desc.StencilEnable = enableStencil;
-    desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
-    desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-
-    // Caras frontales
-    desc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-    desc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
-    desc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-    desc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-
-    // Caras traseras
-    desc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-    desc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
-    desc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-    desc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+    desc.DepthEnable    = enableDepth ? TRUE : FALSE;
+    desc.DepthWriteMask = writeMask;
+    desc.DepthFunc      = compareFunc;
+    desc.StencilEnable  = FALSE;
 
     HRESULT hr = device.CreateDepthStencilState(&desc, &m_depthStencilState);
     if (FAILED(hr)) {
         ERROR("DepthStencilState", "init", "Failed to create DepthStencilState");
-        return hr; // <-- devolver el error real
+        return hr;
     }
     return S_OK;
 }

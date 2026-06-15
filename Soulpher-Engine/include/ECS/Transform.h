@@ -1,3 +1,26 @@
+/**
+ * @file Transform.h
+ * @brief Componente ECS de transformacion espacial: posicion, rotacion y escala.
+ *
+ * @details
+ * Transform es el componente mas universal en cualquier motor de juego. Almacena
+ * la posicion, orientacion y tamano de un actor en espacio mundo, y construye la
+ * matriz de transformacion que el GPU usa para convertir vertices de espacio local
+ * a espacio mundo (la World matrix de CBPerObject).
+ *
+ * El orden de composicion de la matriz es TRS (Translation * Rotation * Scale),
+ * estandar en DirectX con matrices row-major (opuesto a OpenGL, que usa column-major).
+ *
+ * @note [GameDev] En Unreal Engine, Transform esta embebido en AActor como
+ * GetActorLocation / SetActorRotation en vez de ser un componente separado.
+ * En Unity, Transform es un componente obligatorio â€” todo GameObject lo tiene.
+ * El enfoque ECS de Soulpher-Engine es mas parecido a Unity (componente separado),
+ * pero en un ECS puro como DOTS o Flecs, Transform seria solo una struct de datos
+ * (sin metodos), procesada por un TransformSystem en batch para maximizar cache hits.
+ *
+ * @see Actor, Component, Entity, CBPerObject
+ */
+
 #pragma once
 #include "Prerequisites.h"
 #include "EngineUtilities\Vectors\Vector3.h"
@@ -6,16 +29,16 @@
 class Transform : public Component {
 public:
     /**
-     * @brief Constructor que inicializa posición, rotación y escala por defecto.
+     * @brief Constructor que inicializa posiciï¿½n, rotaciï¿½n y escala por defecto.
      *
      * @details
-     * - La posición, rotación y escala se inicializan en `(0,0,0)` y `(1,1,1)` según el valor por defecto de `EU::Vector3`.
-     * - La matriz de transformación (`matrix`) comienza como identidad.
+     * - La posiciï¿½n, rotaciï¿½n y escala se inicializan en `(0,0,0)` y `(1,1,1)` segï¿½n el valor por defecto de `EU::Vector3`.
+     * - La matriz de transformaciï¿½n (`matrix`) comienza como identidad.
      * - El tipo de componente se establece como `ComponentType::TRANSFORM`.
      *
      * @note Para estudiantes:
-     * - Este es uno de los componentes más comunes en un motor ECS.
-     * - Un `Transform` define dónde y cómo está orientada una entidad en el mundo.
+     * - Este es uno de los componentes mï¿½s comunes en un motor ECS.
+     * - Un `Transform` define dï¿½nde y cï¿½mo estï¿½ orientada una entidad en el mundo.
      */
     Transform()
         : position(), rotation(), scale(), matrix(),
@@ -23,18 +46,18 @@ public:
     }
 
     /**
-     * @brief Inicializa el componente de transformación.
+     * @brief Inicializa el componente de transformaciï¿½n.
      *
-     * @note Aquí se podrían cargar datos iniciales o configurar la matriz como identidad.
+     * @note Aquï¿½ se podrï¿½an cargar datos iniciales o configurar la matriz como identidad.
      */
     void init();
 
     /**
      * @brief Actualiza el estado del objeto Transform.
-     * @param deltaTime Tiempo transcurrido desde la última actualización (en segundos).
+     * @param deltaTime Tiempo transcurrido desde la ï¿½ltima actualizaciï¿½n (en segundos).
      *
-     * @note Usualmente este método recalcula la matriz de transformación
-     * combinando posición, rotación y escala.
+     * @note Usualmente este mï¿½todo recalcula la matriz de transformaciï¿½n
+     * combinando posiciï¿½n, rotaciï¿½n y escala.
      */
     void update(float deltaTime) override;
 
@@ -50,22 +73,22 @@ public:
     /**
      * @brief Destruye el objeto Transform y libera recursos.
      *
-     * @note Generalmente no es necesario liberar memoria aquí, ya que es un componente de datos.
+     * @note Generalmente no es necesario liberar memoria aquï¿½, ya que es un componente de datos.
      */
     void destroy() {}
 
-    // ==== Métodos de acceso y modificación ====
+    // ==== Mï¿½todos de acceso y modificaciï¿½n ====
 
-    /** @brief Obtiene la posición actual. */
+    /** @brief Obtiene la posiciï¿½n actual. */
     const EU::Vector3& getPosition() const { return position; }
 
-    /** @brief Establece una nueva posición. */
+    /** @brief Establece una nueva posiciï¿½n. */
     void setPosition(const EU::Vector3& newPos) { position = newPos; }
 
-    /** @brief Obtiene la rotación actual. */
+    /** @brief Obtiene la rotaciï¿½n actual. */
     const EU::Vector3& getRotation() const { return rotation; }
 
-    /** @brief Establece una nueva rotación. */
+    /** @brief Establece una nueva rotaciï¿½n. */
     void setRotation(const EU::Vector3& newRot) { rotation = newRot; }
 
     /** @brief Obtiene la escala actual. */
@@ -75,19 +98,19 @@ public:
     void setScale(const EU::Vector3& newScale) { scale = newScale; }
 
     /**
-     * @brief Establece posición, rotación y escala en una sola llamada.
-     * @param newPos Nueva posición.
-     * @param newRot Nueva rotación.
+     * @brief Establece posiciï¿½n, rotaciï¿½n y escala en una sola llamada.
+     * @param newPos Nueva posiciï¿½n.
+     * @param newRot Nueva rotaciï¿½n.
      * @param newSca Nueva escala.
      *
-     * @note Útil para inicializar transformaciones rápidamente.
+     * @note ï¿½til para inicializar transformaciones rï¿½pidamente.
      */
     void setTransform(const EU::Vector3& newPos,
         const EU::Vector3& newRot,
         const EU::Vector3& newSca);
 
     /**
-     * @brief Traslada la posición del objeto.
+     * @brief Traslada la posiciï¿½n del objeto.
      * @param translation Vector que representa el desplazamiento en cada eje.
      *
      * @note Similar a `setPosition(getPosition() + translation)`.
@@ -95,10 +118,10 @@ public:
     void translate(const EU::Vector3& translation);
 
 private:
-    EU::Vector3 position; ///< Posición del objeto en coordenadas del mundo.
-    EU::Vector3 rotation; ///< Rotación en ejes X, Y, Z (en grados o radianes según convención).
+    EU::Vector3 position; ///< Posiciï¿½n del objeto en coordenadas del mundo.
+    EU::Vector3 rotation; ///< Rotaciï¿½n en ejes X, Y, Z (en grados o radianes segï¿½n convenciï¿½n).
     EU::Vector3 scale;    ///< Escala relativa en X, Y, Z.
 
 public:
-    XMMATRIX matrix; ///< Matriz de transformación combinada (posición, rotación, escala).
+    XMMATRIX matrix; ///< Matriz de transformaciï¿½n combinada (posiciï¿½n, rotaciï¿½n, escala).
 };

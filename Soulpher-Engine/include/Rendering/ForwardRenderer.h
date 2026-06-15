@@ -1,3 +1,34 @@
+/**
+ * @file ForwardRenderer.h
+ * @brief Renderer de dos passes: shadow depth pass + color pass con PCF shadows.
+ *
+ * @details
+ * ForwardRenderer implementa Forward Rendering con shadow maps dinamicos:
+ *
+ *  **Pass 1 — Shadow Depth Pass** (punto de vista de la luz):
+ *   - Viewport fijo: 2048x2048 (m_shadowViewport).
+ *   - Sin render target; solo DSV sobre m_shadowTex (R24G8_TYPELESS).
+ *   - Shader: m_shadowDepthShader — solo VS (ShadowVS), PS nulo.
+ *   - CBPerFrame (b0) con LightViewProjection debe estar ya en GPU.
+ *   - Salida: textura de profundidad lista para leer en t6 del PS.
+ *
+ *  **Pass 2 — Color Pass** (punto de vista de la camara):
+ *   - bindShadowMap() enlaza m_shadowSRV en slot t6 del Pixel Shader.
+ *   - HLSL aplica filtrado PCF 3x3 para suavizar bordes de sombra.
+ *   - LightViewProjection en CBPerFrame permite calcular coordenadas de shadow map.
+ *
+ * @note [GameDev] Forward Rendering es el pipeline mas simple y compatible:
+ * cada objeto se dibuja con todos sus efectos en un solo pass. Es el estandar
+ * para motores educativos, mobile (OpenGL ES) y juegos indie.
+ * Deferred Rendering (Unreal, HDRP de Unity) dibuja primero a un G-Buffer
+ * (normal, albedo, depth) y calcula iluminacion en un segundo pass. Escala mucho
+ * mejor con cientos de luces, pero consume mas bandwidth de memoria y no funciona
+ * bien con MSAA. Para shadow maps en deferred se usan Cascaded Shadow Maps (CSM),
+ * que dividen el frustum en zonas con resoluciones distintas.
+ *
+ * @see BaseApp, RenderScene, CBPerFrame, ShaderProgram, Soulpher-Engine.fx
+ */
+
 #pragma once
 #include "Prerequisites.h"
 #include "Rendering/RenderTypes.h"

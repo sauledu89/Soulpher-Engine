@@ -1,4 +1,25 @@
-﻿#pragma once
+﻿/**
+ * @file Rasterizer.h
+ * @brief Encapsula el Rasterizer State de Direct3D 11.
+ *
+ * @details
+ * El rasterizador convierte primitivas geometricas (triangulos) en fragmentos para el
+ * pixel shader. Su estado controla:
+ *  - CullMode: descartar caras traseras (back-face culling, optimizacion clave en 3D).
+ *  - FillMode: solido (produccion) o wireframe (debug de topologia de malla).
+ *  - DepthBias + SlopeScaledDepthBias: offset de profundidad para evitar shadow acne.
+ *
+ * @note [GameDev] El DepthBias es critico para shadow maps: sin el, las superficies se
+ * auto-sombrean por error de precision de punto flotante ("shadow acne"). Con demasiado
+ * bias el objeto "flota" sobre su sombra ("Peter Panning"). Ajustar este balance es un
+ * tuning tipico en motores con shadows dinamicos. En Soulpher-Engine el bias se controla
+ * mediante un bias constante (0.003f) en el HLSL, no desde aqui.
+ * El back-face culling ahorra ~50% de los pixel shader invocations en escenas cerradas.
+ *
+ * @see ForwardRenderer, CBPerFrame, DepthStencilState
+ */
+
+#pragma once
 #include "Prerequisites.h"
 
 class Device;

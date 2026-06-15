@@ -1,19 +1,26 @@
 /**
  * @file SamplerState.cpp
- * @brief Implementación de la creación y uso de estados de muestreo de texturas en Direct3D 11.
+ * @brief Implementaciï¿½n de la creaciï¿½n y uso de estados de muestreo de texturas en Direct3D 11.
  *
  * @details
- * Un **Sampler State** define cómo el motor gráfico lee (muestrea) los píxeles de una textura
+ * Un **Sampler State** define cï¿½mo el motor grï¿½fico lee (muestrea) los pï¿½xeles de una textura
  * cuando se renderiza. Controla aspectos como:
- *  - Filtros (linear, point, anisotrópico).
- *  - Dirección de repetición (wrap, clamp, mirror).
+ *  - Filtros (linear, point, anisotrï¿½pico).
+ *  - Direcciï¿½n de repeticiï¿½n (wrap, clamp, mirror).
  *  - Nivel de detalle (LOD).
  *
  * @note
  * En videojuegos, un buen control de `SamplerState` es importante para:
- *  - Evitar texturas pixeladas (usar filtrado lineal o anisotrópico).
+ *  - Evitar texturas pixeladas (usar filtrado lineal o anisotrï¿½pico).
  *  - Controlar repeticiones en mallas grandes (wrap vs clamp).
  *  - Mejorar la calidad visual sin sacrificar demasiado rendimiento.
+ *
+ * @note [GameDev] Este sampler usa MIN_MAG_MIP_LINEAR (trilinear) + WRAP para texturas
+ * de color. Para el shadow map se necesita un sampler de COMPARACION (D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT
+ * + D3D11_COMPARISON_LESS_EQUAL) que permite usar SampleCmpLevelZero() en HLSL.
+ * En Soulpher-Engine el shadow map usa txShadow.Sample() en vez de SampleCmp, lo que
+ * significa que la comparacion la hace el shader en HLSL (ComputeShadow). Una extension
+ * natural seria crear un segundo SamplerState de comparacion para PCF hardware-accelerated.
  */
 
 #include "SamplerState.h"
@@ -24,17 +31,17 @@
   * @brief Inicializa el estado de muestreo de texturas.
   *
   * @param device  Referencia al dispositivo Direct3D 11.
-  * @return HRESULT Devuelve `S_OK` si se crea correctamente, o un código de error si falla.
+  * @return HRESULT Devuelve `S_OK` si se crea correctamente, o un cï¿½digo de error si falla.
   *
   * @details
   * En este caso se crea un sampler con:
-  *  - **Filtrado lineal** en minificación, magnificación y mipmaps (`MIN_MAG_MIP_LINEAR`).
-  *  - **Dirección wrap** en U, V y W (la textura se repite indefinidamente).
-  *  - Sin comparación de profundidad (`COMPARISON_NEVER`).
-  *  - Rango de LOD desde 0 hasta el máximo permitido.
+  *  - **Filtrado lineal** en minificaciï¿½n, magnificaciï¿½n y mipmaps (`MIN_MAG_MIP_LINEAR`).
+  *  - **Direcciï¿½n wrap** en U, V y W (la textura se repite indefinidamente).
+  *  - Sin comparaciï¿½n de profundidad (`COMPARISON_NEVER`).
+  *  - Rango de LOD desde 0 hasta el mï¿½ximo permitido.
   *
   * @note
-  * Este es un sampler estándar muy usado para texturas 2D comunes en videojuegos.
+  * Este es un sampler estï¿½ndar muy usado para texturas 2D comunes en videojuegos.
   */
 HRESULT SamplerState::init(Device& device) {
     if (!device.m_device) {
@@ -64,22 +71,22 @@ HRESULT SamplerState::init(Device& device) {
  * @brief Actualiza el estado de muestreo.
  *
  * @note
- * En este caso no hay lógica dinámica, pero en un motor más complejo podría
- * cambiarse el filtro o el modo de repetición en tiempo real.
+ * En este caso no hay lï¿½gica dinï¿½mica, pero en un motor mï¿½s complejo podrï¿½a
+ * cambiarse el filtro o el modo de repeticiï¿½n en tiempo real.
  */
 void SamplerState::update() {
-    // No hay lógica de actualización para un sampler en este caso.
+    // No hay lï¿½gica de actualizaciï¿½n para un sampler en este caso.
 }
 
 /**
  * @brief Asigna el sampler al pipeline de renderizado en el **Pixel Shader**.
  *
  * @param deviceContext  Contexto del dispositivo.
- * @param StartSlot      Primer slot donde se asignará el sampler.
- * @param NumSamplers    Número de samplers a asignar.
+ * @param StartSlot      Primer slot donde se asignarï¿½ el sampler.
+ * @param NumSamplers    Nï¿½mero de samplers a asignar.
  *
  * @note
- * Esto permite que el shader aplique el filtrado y la repetición configurada
+ * Esto permite que el shader aplique el filtrado y la repeticiï¿½n configurada
  * al acceder a las texturas.
  */
 void SamplerState::render(DeviceContext& deviceContext,

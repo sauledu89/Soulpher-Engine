@@ -1,6 +1,29 @@
 ﻿/**
  * @file UserInterface.cpp
- * @brief Inicialización, actualización y render de la UI (ImGui) en The Visionary Engine.
+ * @brief Inicializacion, actualizacion y render de la UI (ImGui) de Soulpher-Engine.
+ *
+ * @details
+ * UserInterface usa Dear ImGui en su rama "docking" (ImGuiConfigFlags_DockingEnable)
+ * para crear un editor de motor con paneles flotantes y anclables.
+ * Cada frame el ciclo es: init una vez -> update() -> render() -> destroy al cerrar.
+ *
+ * Paneles implementados:
+ *  - Outliner: lista jerarquica de actores en escena.
+ *  - Inspector: propiedades de transformacion del actor seleccionado (vec3Control).
+ *  - Light Panel: direccion y color de la luz + shadow bias.
+ *  - Renderer Window: preview del framebuffer como SRV en una ventana ImGui.
+ *  - Output: consola de mensajes de debug.
+ *  - MenuBar: archivo, captura de pantalla, cambio de tema.
+ *
+ * @note [GameDev] ImGui usa el patron "Immediate Mode": la UI no tiene estado persistente,
+ * se reconstruye completamente cada frame desde cero. Contrario a sistemas "Retained Mode"
+ * (WPF, Qt, HTML) donde el arbol de widgets persiste y solo se actualizan los cambios.
+ * Immediate Mode es ideal para herramientas de debug/editor porque es simple de implementar
+ * y no requiere manejar eventos de UI — simplemente preguntas "isButtonPressed?" y actuas.
+ * Unreal Engine usa Slate (Retained Mode) para su editor y UMG para UI en juego.
+ * Dear ImGui es el estandar de facto para debug UI en motores custom.
+ *
+ * @see UserInterface.h, BaseApp, Window, SwapChain
  */
 
 #include "UserInterface.h"
@@ -47,7 +70,7 @@ void UserInterface::init(void* window, ID3D11Device* device, ID3D11DeviceContext
     }
 
     ImGui::StyleColorsDark();
-    NeonRedStyle();
+    CyberpunkStyle();
 
     ImGui_ImplWin32_Init(window);
     ImGui_ImplDX11_Init(device, deviceContext);
@@ -455,6 +478,133 @@ void UserInterface::NeonRedStyle() {
     }
 }
 
+
+void UserInterface::CyberpunkStyle() {
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4* c = style.Colors;
+
+    // ── Fondos ───────────────────────────────────────────────────────────────
+    const ImVec4 bg0  = { 0.02f, 0.03f, 0.06f, 1.00f }; // #050810  fondo principal
+    const ImVec4 bg1  = { 0.04f, 0.06f, 0.10f, 1.00f }; // #0A0F1A  paneles / popups
+    const ImVec4 bg2  = { 0.06f, 0.09f, 0.15f, 1.00f }; // #0F1726  widgets / frames
+
+    // ── Neón cian (acento primario) ───────────────────────────────────────────
+    const ImVec4 cyan     = { 0.00f, 0.90f, 1.00f, 1.00f }; // #00E5FF
+    const ImVec4 cyanHov  = { 0.20f, 0.95f, 1.00f, 1.00f }; // #33F3FF
+    const ImVec4 cyanAct  = { 0.40f, 1.00f, 1.00f, 1.00f }; // #66FFFF
+    const ImVec4 cyanFill = { 0.00f, 0.90f, 1.00f, 0.18f }; // cian semitransparente
+
+    // ── Magenta neón (acento secundario – botones, activos) ───────────────────
+    const ImVec4 mag     = { 1.00f, 0.18f, 0.47f, 1.00f }; // #FF2F78
+    const ImVec4 magHov  = { 1.00f, 0.30f, 0.55f, 1.00f }; // #FF4D8C
+    const ImVec4 magAct  = { 1.00f, 0.40f, 0.62f, 1.00f }; // #FF669E
+    const ImVec4 magFill = { 1.00f, 0.18f, 0.47f, 0.18f }; // magenta semitransparente
+
+    // ── Borde metálico ────────────────────────────────────────────────────────
+    const ImVec4 edge = { 0.10f, 0.20f, 0.30f, 1.00f }; // acero azul oscuro
+
+    // ── Métricas: esquinas casi angulares para look tech ─────────────────────
+    style.Alpha             = 1.0f;
+    style.WindowRounding    = 3.0f;
+    style.FrameRounding     = 2.0f;
+    style.GrabRounding      = 2.0f;
+    style.ScrollbarRounding = 2.0f;
+    style.TabRounding       = 2.0f;
+    style.PopupRounding     = 2.0f;
+    style.WindowBorderSize  = 1.0f;
+    style.FrameBorderSize   = 1.0f;
+    style.PopupBorderSize   = 1.0f;
+    style.WindowPadding     = { 8.0f, 6.0f };
+    style.FramePadding      = { 6.0f, 4.0f };
+    style.ItemSpacing       = { 6.0f, 4.0f };
+    style.ScrollbarSize     = 12.0f;
+    style.GrabMinSize       = 10.0f;
+
+    // ── Texto ─────────────────────────────────────────────────────────────────
+    c[ImGuiCol_Text]         = { 0.88f, 0.97f, 1.00f, 1.00f }; // blanco cian
+    c[ImGuiCol_TextDisabled] = { 0.35f, 0.50f, 0.60f, 1.00f }; // gris apagado
+
+    // ── Fondos de ventanas ────────────────────────────────────────────────────
+    c[ImGuiCol_WindowBg]   = bg0;
+    c[ImGuiCol_ChildBg]    = { 0.00f, 0.00f, 0.00f, 0.00f };
+    c[ImGuiCol_PopupBg]    = bg1;
+
+    // ── Bordes ────────────────────────────────────────────────────────────────
+    c[ImGuiCol_Border]       = edge;
+    c[ImGuiCol_BorderShadow] = { 0.00f, 0.00f, 0.00f, 0.00f };
+
+    // ── Frames (inputs, combos, sliders) ─────────────────────────────────────
+    c[ImGuiCol_FrameBg]        = bg2;
+    c[ImGuiCol_FrameBgHovered] = cyanFill;
+    c[ImGuiCol_FrameBgActive]  = cyanFill;
+
+    // ── Barras de título ──────────────────────────────────────────────────────
+    c[ImGuiCol_TitleBg]          = bg1;
+    c[ImGuiCol_TitleBgActive]    = { 0.03f, 0.12f, 0.18f, 1.00f }; // cian muy oscuro
+    c[ImGuiCol_TitleBgCollapsed] = bg0;
+    c[ImGuiCol_MenuBarBg]        = bg1;
+
+    // ── Scrollbar ─────────────────────────────────────────────────────────────
+    c[ImGuiCol_ScrollbarBg]          = bg1;
+    c[ImGuiCol_ScrollbarGrab]        = edge;
+    c[ImGuiCol_ScrollbarGrabHovered] = cyan;
+    c[ImGuiCol_ScrollbarGrabActive]  = cyanAct;
+
+    // ── Controles interactivos ────────────────────────────────────────────────
+    c[ImGuiCol_CheckMark]        = cyan;
+    c[ImGuiCol_SliderGrab]       = cyan;
+    c[ImGuiCol_SliderGrabActive] = cyanAct;
+
+    // ── Botones: magenta para máximo contraste ────────────────────────────────
+    c[ImGuiCol_Button]        = mag;
+    c[ImGuiCol_ButtonHovered] = magHov;
+    c[ImGuiCol_ButtonActive]  = magAct;
+
+    // ── Headers (CollapsingHeader, TreeNode, Selectable) ─────────────────────
+    c[ImGuiCol_Header]        = cyanFill;
+    c[ImGuiCol_HeaderHovered] = { 0.00f, 0.90f, 1.00f, 0.30f };
+    c[ImGuiCol_HeaderActive]  = cyan;
+
+    // ── Separadores ───────────────────────────────────────────────────────────
+    c[ImGuiCol_Separator]        = edge;
+    c[ImGuiCol_SeparatorHovered] = cyanHov;
+    c[ImGuiCol_SeparatorActive]  = cyanAct;
+
+    // ── Resize grip ───────────────────────────────────────────────────────────
+    c[ImGuiCol_ResizeGrip]        = cyanFill;
+    c[ImGuiCol_ResizeGripHovered] = cyan;
+    c[ImGuiCol_ResizeGripActive]  = cyanAct;
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+    c[ImGuiCol_Tab]                = bg2;
+    c[ImGuiCol_TabHovered]         = { 0.00f, 0.90f, 1.00f, 0.25f };
+    c[ImGuiCol_TabActive]          = { 0.03f, 0.20f, 0.28f, 1.00f };
+    c[ImGuiCol_TabUnfocused]       = bg1;
+    c[ImGuiCol_TabUnfocusedActive] = bg2;
+
+    // ── Docking ───────────────────────────────────────────────────────────────
+    c[ImGuiCol_DockingPreview] = cyanFill;
+    c[ImGuiCol_DockingEmptyBg] = bg0;
+
+    // ── Plots ─────────────────────────────────────────────────────────────────
+    c[ImGuiCol_PlotLines]             = cyan;
+    c[ImGuiCol_PlotLinesHovered]      = mag;
+    c[ImGuiCol_PlotHistogram]         = cyan;
+    c[ImGuiCol_PlotHistogramHovered]  = mag;
+
+    // ── Selección / nav ───────────────────────────────────────────────────────
+    c[ImGuiCol_TextSelectedBg]          = cyanFill;
+    c[ImGuiCol_DragDropTarget]          = mag;
+    c[ImGuiCol_NavHighlight]            = cyan;
+    c[ImGuiCol_NavWindowingHighlight]   = cyan;
+    c[ImGuiCol_NavWindowingDimBg]       = { 0.00f, 0.00f, 0.00f, 0.60f };
+    c[ImGuiCol_ModalWindowDimBg]        = { 0.00f, 0.00f, 0.00f, 0.70f };
+
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        style.WindowRounding = 0.0f;
+        c[ImGuiCol_WindowBg].w = 1.0f;
+    }
+}
 
 void UserInterface::visualStudioStyle() {
     ImGuiStyle& style = ImGui::GetStyle();

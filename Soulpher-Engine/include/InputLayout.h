@@ -6,21 +6,30 @@ class DeviceContext;
 
 /**
  * @file InputLayout.h
- * @brief Encapsula la definición del formato de los datos de vértice para el Input Assembler de Direct3D 11.
+ * @brief Encapsula la definiciï¿½n del formato de los datos de vï¿½rtice para el Input Assembler de Direct3D 11.
  *
  * @details
- * El **Input Layout** describe cómo se interpretan los datos contenidos en un Vertex Buffer
- * y cómo se envían al Vertex Shader.
+ * El **Input Layout** describe cï¿½mo se interpretan los datos contenidos en un Vertex Buffer
+ * y cï¿½mo se envï¿½an al Vertex Shader.
  *
  * Un `InputLayout` se crea a partir de:
- * - Una lista de descriptores `D3D11_INPUT_ELEMENT_DESC` que define cada atributo de vértice
- *   (posición, normal, color, coordenadas UV…).
- * - El bytecode compilado del Vertex Shader, ya que este determina qué atributos se esperan.
+ * - Una lista de descriptores `D3D11_INPUT_ELEMENT_DESC` que define cada atributo de vï¿½rtice
+ *   (posiciï¿½n, normal, color, coordenadas UVï¿½).
+ * - El bytecode compilado del Vertex Shader, ya que este determina quï¿½ atributos se esperan.
  *
  * @note Para estudiantes:
- * - Si el Input Layout no coincide con la estructura de vértices usada o con las entradas declaradas en el Vertex Shader, **el render fallará**.
- * - Este es uno de los pasos clave en la configuración inicial del pipeline gráfico.
- * - Cambiar de Input Layout puede ser costoso en rendimiento, así que agrupa el render de objetos con el mismo formato de vértice.
+ * - Si el Input Layout no coincide con la estructura de vï¿½rtices usada o con las entradas declaradas en el Vertex Shader, **el render fallarï¿½**.
+ * - Este es uno de los pasos clave en la configuraciï¿½n inicial del pipeline grï¿½fico.
+ * - Cambiar de Input Layout puede ser costoso en rendimiento, asï¿½ que agrupa el render de objetos con el mismo formato de vï¿½rtice.
+ *
+ * @note [GameDev] El Input Layout es el "contrato" entre la CPU (SimpleVertex en C++) y
+ * el Vertex Shader (input struct en HLSL con semantics POSITION, NORMAL, TANGENT, etc.).
+ * Si los semantics, formatos o strides no coinciden, la GPU interpreta los bytes mal y
+ * produce geometria corrupta o crashes silenciosos.
+ * En DX12 y Vulkan esto se llama "Vertex Input State" y es parte del Pipeline State Object
+ * (PSO). En DX12, cambiar el vertex format requiere crear un nuevo PSO completo.
+ * Una optimizacion comun es usar un solo vertex format universal (como SimpleVertex aqui)
+ * para todos los objetos y evitar cambiar el Input Layout entre draw calls.
  */
 class InputLayout {
 public:
@@ -29,14 +38,14 @@ public:
 
     /**
      * @brief Inicializa el Input Layout.
-     * @param device Dispositivo de Direct3D usado para la creación.
+     * @param device Dispositivo de Direct3D usado para la creaciï¿½n.
      * @param Layout Vector de descriptores de elementos de entrada (`D3D11_INPUT_ELEMENT_DESC`).
      * @param VertexShaderData Bytecode del Vertex Shader asociado (compilado con HLSL).
-     * @return `S_OK` si la operación fue exitosa, código de error en caso contrario.
+     * @return `S_OK` si la operaciï¿½n fue exitosa, cï¿½digo de error en caso contrario.
      *
      * @note
      * - `Layout` debe coincidir exactamente con las entradas declaradas en el Vertex Shader.
-     * - Cada descriptor en `Layout` define un atributo: nombre semántico, formato, offset, etc.
+     * - Cada descriptor en `Layout` define un atributo: nombre semï¿½ntico, formato, offset, etc.
      */
     HRESULT init(Device& device,
         std::vector<D3D11_INPUT_ELEMENT_DESC>& Layout,
@@ -45,15 +54,15 @@ public:
     /**
      * @brief Actualiza el estado interno del Input Layout (si es necesario).
      *
-     * @note Actualmente no implementado, pero podría usarse para regenerar el layout si cambian los datos de vértice.
+     * @note Actualmente no implementado, pero podrï¿½a usarse para regenerar el layout si cambian los datos de vï¿½rtice.
      */
     void update();
 
     /**
      * @brief Asigna este Input Layout al pipeline de renderizado.
-     * @param deviceContext Contexto del dispositivo donde se aplicará.
+     * @param deviceContext Contexto del dispositivo donde se aplicarï¿½.
      *
-     * @note Esto debe hacerse antes de emitir draw calls, para que el Input Assembler interprete los vértices correctamente.
+     * @note Esto debe hacerse antes de emitir draw calls, para que el Input Assembler interprete los vï¿½rtices correctamente.
      */
     void render(DeviceContext& deviceContext);
 

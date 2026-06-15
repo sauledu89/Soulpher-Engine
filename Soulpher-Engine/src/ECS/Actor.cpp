@@ -17,6 +17,16 @@
  * - `MeshComponent` contiene la geometría a renderizar.
  * - El uso de **constant buffers** permite enviar datos de CPU → GPU cada frame.
  * - El render de sombras se realiza proyectando la geometría en el plano del suelo mediante una matriz de proyección de sombra.
+ *
+ * @note [GameDev] El constructor Actor(Device&) inicializa todos los recursos GPU del actor:
+ * CBPerObject (b1), CBPerMaterial (b2), SamplerState, Rasterizer, BlendState y el shader
+ * de sombra plana. Esto sigue el patron "todo listo en el constructor" que simplifica el
+ * ciclo de vida, a costa de que crear un Actor sin Device sea imposible.
+ * renderDepth() solo enlaza VB, IB y CBPerObject — sin texturas ni estados de blend —
+ * porque el shadow pass solo necesita la posicion en espacio clip de la luz.
+ * La shadow projection matrix de renderShadow() usa algebra de "aplanar en Y=0" clasica
+ * de la epoca de fixed-function pipeline (pre-DX9). Para sombras reales se usa el shadow
+ * map del ForwardRenderer.
  */
 
 #include "ECS/Actor.h"
@@ -92,7 +102,7 @@ Actor::Actor(Device& device) {
             ("Failed to initialize Shadow Blend State. HRESULT: " + std::to_string(hr)).c_str());
     }
 
-    hr = m_shadowDepthStencilState.init(device, true, false);
+    hr = m_shadowDepthStencilState.init(device, true);
     if (FAILED(hr)) {
         ERROR("Main", "InitDevice",
             ("Failed to initialize Depth Stencil State. HRESULT: " + std::to_string(hr)).c_str());

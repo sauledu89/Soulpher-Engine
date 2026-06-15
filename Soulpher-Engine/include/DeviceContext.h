@@ -1,6 +1,6 @@
 ﻿/**
  * @file DeviceContext.h
- * @brief Encapsula el contexto de dispositivo Direct3D 11 para The Visionary Engine.
+ * @brief Encapsula el contexto de dispositivo Direct3D 11 — canal de comandos GPU de Soulpher-Engine.
  *
  * @details
  * El **DeviceContext** es el encargado de emitir comandos de render y configurar
@@ -16,10 +16,13 @@
  * - Limpiar buffers.
  * - Ejecutar draw calls.
  *
- * @note Para estudiantes:
- * - El `Device` crea recursos, pero el `DeviceContext` **los usa** para dibujar.
- * - Cambiar estados o recursos frecuentemente puede afectar el rendimiento.
- * - Entender este flujo es clave para optimizar un motor 3D.
+ * @note [GameDev] El DeviceContext es el "command buffer" de DX11: todo lo que haces aqui
+ * (cambiar shaders, enlazar texturas, emitir draw calls) se ejecuta inmediatamente en el
+ * Immediate Context. En DX12 y Vulkan esto se separa en "grabar" (record) vs "enviar"
+ * (submit), lo que permite paralelizar la grabacion en multiples hilos.
+ * Minimizar los "state changes" (cambiar shader, sampler, rasterizer...) entre draw calls
+ * es una de las optimizaciones mas importantes en DX11: agrupar objetos con el mismo
+ * material/shader evita el overhead de reconfigurar el pipeline cada draw call.
  */
 
 #pragma once

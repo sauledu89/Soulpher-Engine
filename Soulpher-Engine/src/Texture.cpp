@@ -9,6 +9,14 @@
  *  - init(Device&, Texture&, DXGI_FORMAT): crea una SRV aliasando otra textura existente.
  *
  * Incluye además update(), render() para enlazar como SRV en el PS, y destroy() para liberar recursos.
+ *
+ * @note [GameDev] DDS es el formato preferido para texturas en motores DX porque ya viene
+ * comprimido en GPU (BC1/BC3/BC7) y con mipmaps pre-generados: una sola llamada a
+ * D3DX11CreateShaderResourceViewFromFileA crea la SRV completa. PNG/JPG requieren
+ * descomprimir en CPU (stb_image) y subir como RGBA no comprimido, lo que consume mas
+ * VRAM. En produccion, los assets PNG/JPG se pre-convierten a DDS durante el Cook/Build.
+ * La textura del shadow map usa el init(width, height, format, flags) con formato TYPELESS
+ * para que pueda ser usada como DSV (write) y SRV (read) simultaneamente.
  */
 
 #define STB_IMAGE_IMPLEMENTATION

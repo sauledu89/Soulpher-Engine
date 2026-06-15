@@ -28,7 +28,7 @@ class DeviceContext;
  * @class Viewport
  * @brief Define el área de renderizado en el pipeline gráfico de Direct3D 11.
  *
- * @note Forma parte del motor gráfico **The Visionary**.
+ * @note ⚡ Forma parte del pipeline de render de **Soulpher-Engine**.
  */
 class Viewport {
 public:

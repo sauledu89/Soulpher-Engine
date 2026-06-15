@@ -9,15 +9,23 @@ class DeviceContext;
  * @brief Clase base para todas las entidades del motor de juego.
  *
  * @details
- * Una `Entity` es el núcleo del patrón **ECS (Entity-Component System)**:
- * - Contiene una colección de `Component` que definen sus datos y comportamientos.
- * - No implementa lógica directamente, sino que delega en sus componentes.
- * - Funciona como "contenedor" para combinar múltiples aspectos (render, física, audio, IA).
+ * Una `Entity` es el nï¿½cleo del patrï¿½n **ECS (Entity-Component System)**:
+ * - Contiene una colecciï¿½n de `Component` que definen sus datos y comportamientos.
+ * - No implementa lï¿½gica directamente, sino que delega en sus componentes.
+ * - Funciona como "contenedor" para combinar mï¿½ltiples aspectos (render, fï¿½sica, audio, IA).
  *
  * @note Para estudiantes:
- * - Las entidades por sí mismas son “vacías”; la funcionalidad se logra a través de componentes.
- * - Esto permite reutilizar código y crear variaciones de entidades simplemente cambiando sus componentes.
+ * - Las entidades por sï¿½ mismas son ï¿½vacï¿½asï¿½; la funcionalidad se logra a travï¿½s de componentes.
+ * - Esto permite reutilizar cï¿½digo y crear variaciones de entidades simplemente cambiando sus componentes.
  * - Ejemplo: un "enemigo" y un "jugador" pueden compartir el mismo `PhysicsComponent` pero tener distinto `AIComponent`.
+ *
+ * @note [GameDev] En Unreal Engine, el equivalente es UObject/AActor: todo objeto del juego
+ * hereda de UObject (identity, reflection, garbage collection) y AActor anade spawn/destroy,
+ * componentes y ticks. Unity usa GameObject + Component, igual que este ECS.
+ * La diferencia clave con un ECS puro (como DOTS de Unity o Flecs) es que aqui la entidad
+ * tiene logica virtual (update/render virtuales). En ECS puro las entidades son solo IDs
+ * numericos sin datos ni metodos, y los sistemas procesan arrays de componentes en batch
+ * para maximizar cache coherency (Structure of Arrays vs Array of Structures).
  */
 class Entity {
 public:
@@ -30,31 +38,31 @@ public:
     /**
      * @brief Inicializa la entidad.
      *
-     * @note Llamar antes de `update()` o `render()` para garantizar que los componentes estén listos.
+     * @note Llamar antes de `update()` o `render()` para garantizar que los componentes estï¿½n listos.
      */
     virtual void init() = 0;
 
     /**
-     * @brief Actualiza la lógica de la entidad.
-     * @param deltaTime Tiempo en segundos desde la última actualización.
-     * @param deviceContext Contexto de dispositivo (render u operaciones gráficas).
+     * @brief Actualiza la lï¿½gica de la entidad.
+     * @param deltaTime Tiempo en segundos desde la ï¿½ltima actualizaciï¿½n.
+     * @param deviceContext Contexto de dispositivo (render u operaciones grï¿½ficas).
      *
-     * @note Ideal para actualizar todos los componentes asociados (física, animaciones, IA).
+     * @note Ideal para actualizar todos los componentes asociados (fï¿½sica, animaciones, IA).
      */
     virtual void update(float deltaTime, DeviceContext& deviceContext) = 0;
 
     /**
      * @brief Renderiza la entidad.
-     * @param deviceContext Contexto del dispositivo para operaciones gráficas.
+     * @param deviceContext Contexto del dispositivo para operaciones grï¿½ficas.
      *
-     * @note Normalmente delega a los componentes gráficos de la entidad.
+     * @note Normalmente delega a los componentes grï¿½ficos de la entidad.
      */
     virtual void render(DeviceContext& deviceContext) = 0;
 
     /**
      * @brief Destruye la entidad y libera sus recursos.
      *
-     * @note Asegura la liberación de memoria GPU/CPU asociada a sus componentes.
+     * @note Asegura la liberaciï¿½n de memoria GPU/CPU asociada a sus componentes.
      */
     virtual void destroy() = 0;
 
@@ -96,7 +104,7 @@ public:
     }
 
 protected:
-    bool m_isActive; ///< Indica si la entidad está activa en el juego.
-    int m_id; ///< Identificador único de la entidad.
+    bool m_isActive; ///< Indica si la entidad estï¿½ activa en el juego.
+    int m_id; ///< Identificador ï¿½nico de la entidad.
     std::vector<EU::TSharedPointer<Component>> m_components; ///< Lista de componentes asociados.
 };

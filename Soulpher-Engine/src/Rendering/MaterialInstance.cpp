@@ -1,27 +1,33 @@
+/**
+ * @file MaterialInstance.cpp
+ * @brief Implementa la logica de MaterialInstance dentro del subsistema Rendering.
+ * @ingroup rendering
+ */
 #include "Rendering/MaterialInstance.h"
 #include "DeviceContext.h"
 #include "Texture.h"
 
 void
 MaterialInstance::bindTextures(DeviceContext& deviceContext) const {
-    if (!deviceContext.m_deviceContext) {
-        return;
+    ID3D11ShaderResourceView* nullTextures[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    deviceContext.PSSetShaderResources(0, 6, nullTextures);
+
+    if (m_albedo) {
+        m_albedo->render(deviceContext, 0, 1);
     }
-
-    // Cada slot se enlaza de forma independiente para no bloquear slots
-    // cuya textura no existe en esta instancia.
-    auto bind = [&](Texture* tex, unsigned int slot) {
-        ID3D11ShaderResourceView* srv = tex ? tex->srv() : nullptr;
-        if (srv) {
-            deviceContext.m_deviceContext->PSSetShaderResources(slot, 1, &srv);
-        }
-    };
-
-    bind(m_albedo,    0);
-    bind(m_normal,    1);
-    bind(m_metallic,  2);
-    bind(m_roughness, 3);
-    bind(m_ao,        4);
-    bind(m_emissive,  5);
-    // Slot 6 es reservado para el shadow map; lo asigna ForwardRenderer.
+    if (m_normal) {
+        m_normal->render(deviceContext, 1, 1);
+    }
+    if (m_metallic) {
+        m_metallic->render(deviceContext, 2, 1);
+    }
+    if (m_roughness) {
+        m_roughness->render(deviceContext, 3, 1);
+    }
+    if (m_ao) {
+        m_ao->render(deviceContext, 4, 1);
+    }
+    if (m_emissive) {
+        m_emissive->render(deviceContext, 5, 1);
+    }
 }

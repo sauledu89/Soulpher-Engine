@@ -19,6 +19,14 @@ class MeshComponent;
  * - Los buffers son fundamentales para enviar datos de CPU a GPU.
  * - Los **Vertex/Index Buffers** suelen crearse una sola vez y usarse muchas veces.
  * - Los **Constant Buffers** se actualizan frecuentemente en cada frame.
+ *
+ * @note [GameDev] En DX11 los buffers son "Default" (GPU-only, inmutables despues de init).
+ * Para actualizar un Constant Buffer se usa UpdateSubresource (copia CPU→GPU cada frame).
+ * En DX12/Vulkan existen "Staging Buffers": primero subes datos a un buffer de CPU
+ * accesible (HOST_VISIBLE), luego haces un copy command a VRAM (DEVICE_LOCAL), que es
+ * mas eficiente para datos grandes (VB/IB de geometria estatica).
+ * El stride (bytes por elemento) es critico: un VB con stride incorrecto hace que el GPU
+ * lea vertices desalineados, produciendo geometria corrupta sin errores de compilacion.
  */
 class Buffer {
 public:

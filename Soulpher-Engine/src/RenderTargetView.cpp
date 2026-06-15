@@ -1,17 +1,23 @@
 /**
  * @file RenderTargetView.cpp
- * @brief Implementación para la creación, configuración y limpieza de Render Target Views (RTV) en Direct3D 11.
+ * @brief Implementaciï¿½n para la creaciï¿½n, configuraciï¿½n y limpieza de Render Target Views (RTV) en Direct3D 11.
  *
  * @details
  * Un **Render Target View** es la interfaz que permite a Direct3D escribir en una textura como si fuera la pantalla.
- * Normalmente, el RTV principal está vinculado al **back buffer** de la swap chain, pero también se pueden crear RTV
+ * Normalmente, el RTV principal estï¿½ vinculado al **back buffer** de la swap chain, pero tambiï¿½n se pueden crear RTV
  * personalizados para renderizado a texturas (por ejemplo, en efectos de post-proceso o reflejos).
  *
  * @note
- * Entender el RTV es clave en motores gráficos, ya que:
+ * Entender el RTV es clave en motores grï¿½ficos, ya que:
  *  - Controla el destino del renderizado.
  *  - Permite trabajar con renderizado diferido (G-Buffers).
- *  - Es esencial en técnicas como render-to-texture o renderizado de sombras.
+ *  - Es esencial en tï¿½cnicas como render-to-texture o renderizado de sombras.
+ *
+ * @note [GameDev] En Soulpher-Engine solo hay un RTV (el del back buffer principal).
+ * Un segundo uso tipico seria crear un RTV sobre una textura separada para el Renderer
+ * preview de ImGui: renderizas la escena a esa textura, luego la muestras como imagen
+ * en un panel de ImGui (Image(srv, size)). Esto es lo que hace UserInterface::Renderer().
+ * Motores como Unity/Unreal llaman a esto "Render Texture" (Unity) / "Scene Capture" (UE).
  */
 
 #include "RenderTargetView.h"
@@ -26,11 +32,11 @@
   * @param device       Dispositivo Direct3D 11.
   * @param backBuffer   Textura del back buffer obtenida de la swap chain.
   * @param Format       Formato deseado. Si se pasa `DXGI_FORMAT_UNKNOWN`, se infiere del recurso.
-  * @return HRESULT     `S_OK` si se crea correctamente, o un código de error si falla.
+  * @return HRESULT     `S_OK` si se crea correctamente, o un cï¿½digo de error si falla.
   *
   * @note
-  * Esta versión está pensada para inicializar el RTV principal de la aplicación.
-  * Detecta automáticamente si la textura usa **MSAA** para configurar la vista como `TEXTURE2DMS`.
+  * Esta versiï¿½n estï¿½ pensada para inicializar el RTV principal de la aplicaciï¿½n.
+  * Detecta automï¿½ticamente si la textura usa **MSAA** para configurar la vista como `TEXTURE2DMS`.
   */
 HRESULT RenderTargetView::init(Device& device, Texture& backBuffer, DXGI_FORMAT Format) {
     if (!device.m_device) {
@@ -58,7 +64,7 @@ HRESULT RenderTargetView::init(Device& device, Texture& backBuffer, DXGI_FORMAT 
 
     HRESULT hr = device.m_device->CreateRenderTargetView(backBuffer.m_texture, &rtvDesc, &m_renderTargetView);
     if (FAILED(hr)) {
-        // Fallback: deja que D3D infiera la descripción
+        // Fallback: deja que D3D infiera la descripciï¿½n
         hr = device.m_device->CreateRenderTargetView(backBuffer.m_texture, nullptr, &m_renderTargetView);
         if (FAILED(hr)) {
             ERROR("RenderTargetView", "init",
@@ -73,13 +79,13 @@ HRESULT RenderTargetView::init(Device& device, Texture& backBuffer, DXGI_FORMAT 
  * @brief Inicializa un RTV a partir de una textura arbitraria.
  *
  * @param device        Dispositivo Direct3D 11.
- * @param inTex         Textura de entrada donde se escribirá el render.
- * @param ViewDimension Dimensión de la vista (ej. `TEXTURE2D`, `TEXTURE2DARRAY`).
+ * @param inTex         Textura de entrada donde se escribirï¿½ el render.
+ * @param ViewDimension Dimensiï¿½n de la vista (ej. `TEXTURE2D`, `TEXTURE2DARRAY`).
  * @param Format        Formato deseado o `DXGI_FORMAT_UNKNOWN` para inferir.
- * @return HRESULT      `S_OK` si se crea correctamente, o un código de error si falla.
+ * @return HRESULT      `S_OK` si se crea correctamente, o un cï¿½digo de error si falla.
  *
  * @note
- * Esta versión permite crear RTV para texturas auxiliares, ideal para:
+ * Esta versiï¿½n permite crear RTV para texturas auxiliares, ideal para:
  *  - Render-to-texture.
  *  - Renderizado de cubemaps o arrays.
  *  - Buffers para post-procesado.
@@ -125,11 +131,11 @@ HRESULT RenderTargetView::init(Device& device, Texture& inTex,
  *
  * @param deviceContext Contexto de dispositivo.
  * @param depthStencilView Depth Stencil View asociado.
- * @param numViews      Número de vistas de render (normalmente 1).
+ * @param numViews      Nï¿½mero de vistas de render (normalmente 1).
  * @param ClearColor    Color de limpieza en formato RGBA.
  *
  * @note
- * Este método:
+ * Este mï¿½todo:
  *  1. Asigna el RTV y el DSV al pipeline.
  *  2. Limpia ambos para preparar el siguiente frame.
  */
@@ -162,10 +168,10 @@ void RenderTargetView::render(DeviceContext& deviceContext,
  * @brief Configura el RTV sin un Depth Stencil View.
  *
  * @param deviceContext Contexto de dispositivo.
- * @param numViews      Número de vistas de render.
+ * @param numViews      Nï¿½mero de vistas de render.
  *
  * @note
- * Útil para casos donde no se requiere profundidad, como renderizado de HUD o post-proceso.
+ * ï¿½til para casos donde no se requiere profundidad, como renderizado de HUD o post-proceso.
  */
 void RenderTargetView::render(DeviceContext& deviceContext, unsigned int numViews) {
     if (!deviceContext.m_deviceContext) {
@@ -185,7 +191,7 @@ void RenderTargetView::render(DeviceContext& deviceContext, unsigned int numView
  * @brief Libera el recurso del RTV.
  *
  * @note
- * Debe llamarse al cerrar la aplicación o al cambiar de render target
+ * Debe llamarse al cerrar la aplicaciï¿½n o al cambiar de render target
  * para evitar **memory leaks**.
  */
 void RenderTargetView::destroy() {

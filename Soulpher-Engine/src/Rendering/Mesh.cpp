@@ -1,6 +1,37 @@
+/**
+ * @file Mesh.cpp
+ * @brief Implementación de Mesh::buildFrom — construcción de geometría GPU desde datos CPU.
+ *
+ * @details
+ * Convierte una lista de `MeshComponent` (datos en RAM producidos por `ModelLoader`)
+ * en un `Mesh` con buffers en VRAM listos para el pipeline de render.
+ *
+ * Cada `MeshComponent` se traduce a un `Submesh` con:
+ *  - Un Vertex Buffer (`D3D11_BIND_VERTEX_BUFFER`) de `SimpleVertex`.
+ *  - Un Index Buffer (`D3D11_BIND_INDEX_BUFFER`) de `unsigned int`.
+ *
+ * @note [GameDev] Este archivo es un ejemplo del patrón "Upload to GPU":
+ * los datos viven en CPU (MeshComponent) hasta que se deciden subir a VRAM
+ * (Mesh::buildFrom). Una vez subidos, en un motor de producción se liberaría
+ * la copia CPU para ahorrar RAM. Aquí se conserva por simplicidad.
+ *
+ * @see Mesh, Submesh, Buffer, MeshComponent
+ */
+
 #include "Rendering/Mesh.h"
 #include "Device.h"
 
+/**
+ * @brief Construye un Mesh con buffers GPU a partir de datos CPU.
+ *
+ * @param device     Dispositivo Direct3D activo.
+ * @param components Lista de mallas CPU (una por submalla / material).
+ * @return Mesh con todos los Submesh cargados en VRAM.
+ *
+ * @details
+ * Itera los `MeshComponent`, crea VB + IB para cada uno y los agrupa en `Submesh`.
+ * Las submallas que fallen se omiten para no interrumpir la carga del resto del modelo.
+ */
 Mesh
 Mesh::buildFrom(Device& device, const std::vector<MeshComponent>& components) {
     Mesh mesh;

@@ -18,6 +18,13 @@
  * - Direct3D necesita el HWND para crear el **swap chain**.
  * - El tamaño de la ventana (`m_width`, `m_height`) se usa para inicializar el **viewport**.
  * - Se conecta con el **UserInterface** y otros sistemas para sincronizar entrada y salida.
+ *
+ * @note [GameDev] WndProc (en Soulpher-Engine.cpp) es el "message pump" de Win32.
+ * En Unreal Engine, FWindowsApplication::ProcessMessage() hace lo mismo pero ademas
+ * distribuye los eventos a todos los subsistemas registrados (input, editor, etc.).
+ * ImGui_ImplWin32_WndProcHandler DEBE recibir los mensajes antes que el motor para
+ * que la UI capture mouse/teclado cuando el cursor esta sobre un panel de ImGui.
+ * WM_SIZE dispara el resize del SwapChain: el HWND es el nexo entre Win32 y DX11.
  */
 
 #pragma once
@@ -27,7 +34,7 @@
   * @class Window
   * @brief Administra la ventana principal de la aplicación.
   *
-  * @note Parte del motor gráfico **The Visionary**.
+  * @note ⚡ Núcleo Win32 de **Soulpher-Engine**.
   */
 class Window {
 public:

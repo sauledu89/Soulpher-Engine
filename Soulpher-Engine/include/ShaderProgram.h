@@ -1,6 +1,31 @@
-﻿#pragma once
+﻿/**
+ * @file ShaderProgram.h
+ * @brief Encapsula un programa de shaders HLSL (Vertex + Pixel Shader) y su Input Layout.
+ *
+ * @details
+ * ShaderProgram agrupa los dos shaders minimos para un draw call en D3D11:
+ *  - Vertex Shader (VS): transforma vertices de espacio objeto a clip space (MVP).
+ *  - Pixel Shader (PS): calcula el color final de cada fragmento (Lambert, Blinn-Phong, PBR).
+ *  - Input Layout: descriptor que mapea los campos de SimpleVertex a los semantics HLSL
+ *    (POSITION, NORMAL, TANGENT, BINORMAL, TEXCOORD).
+ *
+ * La compilacion HLSL ocurre en tiempo de ejecucion via D3DCompileFromFile. En produccion
+ * se pre-compilarian los shaders (.cso) para evitar el costo al inicio y detectar errores
+ * HLSL en build time, no en runtime.
+ *
+ * @note [GameDev] En Unreal Engine los shaders se compilan off-line a multiples targets
+ * (DX11, DX12, Vulkan, Metal) y se cachean en disco (el "Shader Cook"). Puede generar
+ * gigabytes de shaders compilados. Los tiempos de compilacion de shaders son uno de los
+ * principales bottlenecks de iteration en juegos AAA con miles de variantes de materiales.
+ * Unity llama a este proceso "Shader Variant Compilation" y tambien cachea los resultados.
+ *
+ * @see ForwardRenderer, InputLayout, Device, Soulpher-Engine.fx
+ */
+
+#pragma once
 #include "Prerequisites.h"
 #include "InputLayout.h"
+#include "EngineUtilities/Utilities/LayoutBuilder.h"
 
 class Device;
 class DeviceContext;
@@ -20,7 +45,7 @@ class DeviceContext;
  * - **Input Layout**: Define la estructura de los datos de los vértices (posición, UV, normales, etc.).
  * - Este sistema carga, compila y enlaza ambos shaders al **pipeline gráfico** de Direct3D 11.
  *
- * @note Parte del motor gráfico The Visionary.
+ * @note ⚡ Parte del pipeline gráfico de Soulpher-Engine.
  */
 class ShaderProgram {
 public:
@@ -40,6 +65,11 @@ public:
     HRESULT init(Device& device,
         const std::string& fileName,
         std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
+
+    /** @brief Overload que acepta un LayoutBuilder fluent (delega al overload con vector). */
+    HRESULT init(Device& device, const std::string& fileName, const LayoutBuilder& builder) {
+        return init(device, fileName, builder.Get());
+    }
 
     /** @brief Actualiza el estado del programa de shaders (actualmente no realiza cambios). */
     void update();

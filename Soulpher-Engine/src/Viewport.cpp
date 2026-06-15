@@ -1,24 +1,31 @@
 /**
  * @file Viewport.cpp
- * @brief Configuración y aplicación del viewport de render en DirectX 11.
+ * @brief Configuraciï¿½n y aplicaciï¿½n del viewport de render en DirectX 11.
  *
  * @details
- * El viewport define el área rectangular de la pantalla donde se dibujará
- * la escena 3D. Es uno de los pasos clave en la configuración del pipeline
- * gráfico, ya que:
- *  - Controla el tamaño de la imagen final en píxeles.
+ * El viewport define el ï¿½rea rectangular de la pantalla donde se dibujarï¿½
+ * la escena 3D. Es uno de los pasos clave en la configuraciï¿½n del pipeline
+ * grï¿½fico, ya que:
+ *  - Controla el tamaï¿½o de la imagen final en pï¿½xeles.
  *  - Permite renderizar a subregiones de la pantalla (por ejemplo, para split-screen).
- *  - Ajusta el mapeo de coordenadas normalizadas (NDC) al espacio de píxeles.
+ *  - Ajusta el mapeo de coordenadas normalizadas (NDC) al espacio de pï¿½xeles.
  *
  * @note
  * En DirectX 11, un viewport se aplica al **Rasterizer Stage**.
- * Si el viewport no coincide con el tamaño del render target, la imagen
- * se escalará, lo que puede afectar el rendimiento y la nitidez.
+ * Si el viewport no coincide con el tamaï¿½o del render target, la imagen
+ * se escalarï¿½, lo que puede afectar el rendimiento y la nitidez.
  *
  * @par Consejos para estudiantes:
- *  - Usar el tamaño de la ventana para render normal.
- *  - Cambiar el viewport permite efectos como mini-mapas o cámaras múltiples.
- *  - Es común reconfigurarlo si la ventana cambia de tamaño.
+ *  - Usar el tamaï¿½o de la ventana para render normal.
+ *  - Cambiar el viewport permite efectos como mini-mapas o cï¿½maras mï¿½ltiples.
+ *  - Es comï¿½n reconfigurarlo si la ventana cambia de tamaï¿½o.
+ *
+ * @note [GameDev] El viewport define la transformacion de Normalized Device Coordinates (NDC)
+ * al espacio de pantalla (pixels). NDC va de [-1,1] en X e Y; el viewport escala eso
+ * a [TopLeftX, TopLeftX+Width] x [TopLeftY, TopLeftY+Height].
+ * MinDepth=0 y MaxDepth=1 definen el rango del depth buffer: 0.0 = near, 1.0 = far.
+ * Tener multiples viewports permite split-screen, rear-view mirrors o debug overlays
+ * del shadow map. ForwardRenderer usa un viewport fijo de 2048x2048 para el shadow pass.
  */
 
 #include "Viewport.h"
@@ -28,10 +35,10 @@
  /**
   * @brief Inicializa el viewport usando las dimensiones de una ventana.
   *
-  * @param window Referencia a la ventana desde la que se tomarán ancho y alto.
-  * @return HRESULT S_OK si se configura correctamente, código de error en caso contrario.
+  * @param window Referencia a la ventana desde la que se tomarï¿½n ancho y alto.
+  * @return HRESULT S_OK si se configura correctamente, cï¿½digo de error en caso contrario.
   *
-  * @note Este método es útil para ajustar el viewport al tamaño exacto de la ventana,
+  * @note Este mï¿½todo es ï¿½til para ajustar el viewport al tamaï¿½o exacto de la ventana,
   *       asegurando que la escena se renderice a pantalla completa.
   */
 HRESULT
@@ -58,11 +65,11 @@ Viewport::init(const Window& window) {
 /**
  * @brief Inicializa el viewport con dimensiones personalizadas.
  *
- * @param width  Ancho en píxeles.
- * @param height Alto en píxeles.
- * @return HRESULT S_OK si se configura correctamente, código de error en caso contrario.
+ * @param width  Ancho en pï¿½xeles.
+ * @param height Alto en pï¿½xeles.
+ * @return HRESULT S_OK si se configura correctamente, cï¿½digo de error en caso contrario.
  *
- * @note Úsalo cuando quieras renderizar a un área específica distinta del tamaño de la ventana.
+ * @note ï¿½salo cuando quieras renderizar a un ï¿½rea especï¿½fica distinta del tamaï¿½o de la ventana.
  */
 HRESULT
 Viewport::init(unsigned int width, unsigned int height) {
@@ -82,13 +89,13 @@ Viewport::init(unsigned int width, unsigned int height) {
 }
 
 /**
- * @brief Aplica el viewport al **Rasterizer Stage** del pipeline gráfico.
+ * @brief Aplica el viewport al **Rasterizer Stage** del pipeline grï¿½fico.
  *
- * @param deviceContext Contexto del dispositivo donde se aplicará el viewport.
+ * @param deviceContext Contexto del dispositivo donde se aplicarï¿½ el viewport.
  *
  * @note
- * Este método debe llamarse antes de renderizar cualquier geometría, para
- * asegurar que la imagen se dibuje en la región correcta.
+ * Este mï¿½todo debe llamarse antes de renderizar cualquier geometrï¿½a, para
+ * asegurar que la imagen se dibuje en la regiï¿½n correcta.
  */
 void Viewport::render(DeviceContext& deviceContext) {
     if (!deviceContext.m_deviceContext) {

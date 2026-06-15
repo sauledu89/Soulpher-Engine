@@ -14,6 +14,13 @@
  * Comprender el rasterizador es fundamental en el desarrollo de videojuegos,
  * ya que optimiza el renderizado al descartar geometría no visible
  * y controla la estética visual (por ejemplo, depuración en modo wireframe).
+ *
+ * @note [GameDev] El rasterizer creado aqui usa CullBack (descarta caras traseras) y
+ * FillSolid. Para el shadow depth pass se podria usar CullFront (inverso) para eliminar
+ * el artefacto de "sombra Peter Pan": usando las caras traseras como superficie de shadow
+ * la sombra aparece mas cerca del objeto. Muchos motores crean dos rasterizers: uno normal
+ * y uno "shadow" con CullFront + DepthBias. Activar D3D11_FILL_WIREFRAME desde init()
+ * es suficiente para modo debug de geometria sin cambiar el resto del pipeline.
  */
 
 #include "Rasterizer.h"

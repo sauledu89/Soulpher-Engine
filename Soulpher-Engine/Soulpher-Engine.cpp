@@ -1,6 +1,6 @@
 ﻿/**
  * @file Soulpher-Engine.cpp
- * @brief Punto de entrada Win32 y reenvío de mensajes a ImGui para The Visionary Engine.
+ * @brief Punto de entrada Win32 y gateway de mensajes — núcleo de arranque de Soulpher-Engine.
  *
  * @details
  * Este archivo cumple dos funciones críticas:
@@ -23,6 +23,14 @@
  * - **BaseApp**: Controla la inicialización y el ciclo de vida del motor.
  * - **UserInterface**: Contiene las herramientas y paneles de ImGui.
  * - **Win32 API**: Proporciona la comunicación con el sistema operativo.
+ *
+ * @note [GameDev] wWinMain (Unicode) vs WinMain (ANSI): en motores modernos se usa
+ * siempre la version Unicode. En Unreal Engine, WinMain esta en
+ * Engine/Source/Runtime/Launch/Private/Windows/LaunchWindows.cpp — igual que aqui,
+ * es el punto de entrada mas fino posible antes de delegar todo a FEngineLoop.
+ * WndProc es el "message pump": todos los eventos de teclado, raton y resize pasan
+ * por aqui. ImGui_ImplWin32_WndProcHandler DEBE procesarlos primero para que los
+ * paneles de ImGui puedan capturar input sin que el motor lo intercepte.
  */
 
 #include <windows.h>
