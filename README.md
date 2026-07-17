@@ -4,7 +4,9 @@ Motor gráfico modular desarrollado desde cero en **DirectX 11** como parte del 
 
 Implementa un **Deferred Renderer** completo (G-Buffer de 4 render targets + lighting pass multi-luz + shadow maps + skybox) con carga de modelos FBX, sistema de actores ECS, Light Actors editables, gizmos de transformación en el viewport, cámara orbital interactiva, sistema de materiales PBR e interfaz de usuario con **Dear ImGui**.
 
-<img width="1179" height="992" alt="image" src="https://github.com/user-attachments/assets/0e4a3658-3327-4eee-a05a-296b82831d47" />
+Estado del proyecto en el final del parcial 2 : 
+
+<img width="1197" height="985" alt="SOULPHER-ENGINE-PARCIAL2" src="https://github.com/user-attachments/assets/1edbe849-d33c-40d7-ab2b-932caec18d91" />
 
 ---
 
@@ -268,6 +270,10 @@ Al iniciar deberías ver:
 - Panel **ImGui** (tema NES) con inspector de actores, outliner con creación/duplicado/borrado, gizmos de transformación (`T`/`E`/`R` sobre el actor seleccionado) y debug del G-Buffer.
 
 ---
+
+Estado del proyecto en el final del parcial 1 : 
+
+<img width="1179" height="992" alt="image" src="https://github.com/user-attachments/assets/0e4a3658-3327-4eee-a05a-296b82831d47" />
 
 ## Créditos y librerías utilizadas
 
