@@ -20,6 +20,13 @@ cbuffer CBPerObject : register(b1)
     matrix World;
 }
 
+// [GameDev] Los 6 floats de padding al final no son basura: HLSL empaqueta cbuffers en
+// bloques de 16 bytes (registros float4), así que 7 floats sueltos (BaseColor ya es un
+// float4 aparte) quedarían mal alineados con el struct CBPerMaterial de C++ si no se
+// completan hasta el siguiente múltiplo de 16 bytes. Si agregas o quitas un campo aquí,
+// DEBES actualizar CBPerMaterial en Prerequisites.h en el mismo commit — un desalineamiento
+// silencioso hace que valores como AlphaCutoff lean el byte equivocado sin ningún error de
+// compilación, solo resultados visualmente incorrectos.
 cbuffer CBPerMaterial : register(b2)
 {
     float4 BaseColor;
@@ -96,12 +103,24 @@ VS_OUTPUT VS(VS_INPUT input)
 }
 
 // ─── Pixel Shader ────────────────────────────────────────────────────────────
+// [GameDev] Este PS NO calcula iluminación — solo escribe datos "crudos" de superficie a
+// los 4 MRTs. Toda la matemática de Lambert/Blinn-Phong vive en DeferredLighting.hlsl,
+// que corre UNA vez por píxel final en vez de una vez por triángulo dibujado aquí. Es la
+// separación fundamental del Deferred Rendering: geometry pass = "qué hay en cada píxel",
+// lighting pass = "cómo se ve iluminado".
 PS_OUTPUT PS(VS_OUTPUT input)
 {
     // Sample albedo; apply material base color tint
     float4 albedo = AlbedoTexture.Sample(Sampler, input.tex) * BaseColor;
 
-    // Alpha cutoff for Masked materials (clip discards the pixel)
+    // [GameDev] clip() descarta el píxel (no escribe a NINGÚN render target, incluida la
+    // profundidad) si el argumento es negativo. Para materiales Masked (follaje, rejillas,
+    // alambre de púas) esto crea "agujeros" reales en la geometría a nivel de píxel sin
+    // necesitar geometría separada ni alpha blending — a diferencia de blending, un píxel
+    // clip()eado SÍ actualiza el depth buffer normalmente para los píxeles que sobreviven,
+    // así que sigue proyectando sombra y ocluyendo correctamente. AlphaCutoff es 0 para
+    // materiales no-Masked (ver DeferredRenderer::renderGeometryObject), así que clip()
+    // nunca descarta nada en ese caso (alpha - 0 >= 0 siempre, salvo alpha negativo).
     clip(albedo.a - AlphaCutoff);
 
     // Geometric surface basis (TBN), re-ortogonalizada por si la interpolación las desalineó.
@@ -109,7 +128,13 @@ PS_OUTPUT PS(VS_OUTPUT input)
     float3 T = normalize(input.tangent - N * dot(input.tangent, N));
     float3 B = normalize(input.bitangent);
 
-    // Normal map: [0,1] -> [-1,1], atenuada por NormalScale (0 = normal geométrica pura).
+    // [GameDev] Normal mapping en tangent-space: la textura guarda perturbaciones RELATIVAS
+    // a la superficie (no direcciones absolutas en world-space), codificadas como color RGB
+    // en [0,1] donde (0.5,0.5,1.0) = "sin relieve". Se decodifica a [-1,1], se atenúa con
+    // NormalScale (útil para debug o para materiales con normal map muy agresivo) y se
+    // transforma de tangent-space a world-space multiplicando por la matriz TBN (Tangent-
+    // Bitangent-Normal) — el mismo truco que usa prácticamente cualquier motor con normal
+    // mapping, desde Doom 3 en adelante.
     float3 tangentNormal = NormalTexture.Sample(Sampler, input.tex).rgb * 2.0f - 1.0f;
     tangentNormal.xy *= NormalScale;
     tangentNormal = normalize(tangentNormal);
@@ -122,12 +147,21 @@ PS_OUTPUT PS(VS_OUTPUT input)
     float roughness = RoughnessTexture.Sample(Sampler, input.tex).r * Roughness;
     float ao        = AOTexture.Sample(Sampler, input.tex).r        * AO;
 
-    // Encode normal from [-1,1] to [0,1] for G-Buffer storage
+    // [GameDev] RT1 es UNORM (8 bits/canal para el ejemplo típico, o el float del formato
+    // elegido) y no puede almacenar negativos, pero una normal world-space válida tiene
+    // componentes en [-1,1]. Este es el mismo "encode" que se usa en prácticamente todo
+    // G-Buffer: mapear [-1,1] -> [0,1] al escribir (aquí) y revertirlo con *2-1 al leer
+    // (ver DeferredLighting.hlsl). Sin este paso, cualquier normal con componente negativa
+    // se "clampearía" a 0 al escribirse, destruyendo la iluminación de media escena.
     float3 encodedNormal = N * 0.5f + 0.5f;
 
     // No emissive texture — use strength from CB
     float3 emissive = albedo.rgb * EmissiveStrength;
 
+    // [GameDev] El layout de cada RT (qué va en RGB, qué en A) es un contrato estricto con
+    // DeferredLighting.hlsl: cambiar el orden aquí sin actualizar el unpack del lighting
+    // pass produce errores silenciosos — ej. leer roughness donde debería ir metallic — que
+    // no generan ningún warning de compilación, solo un render visualmente incorrecto.
     PS_OUTPUT output;
     output.RT0 = float4(albedo.rgb,    metallic);       // Albedo + Metallic
     output.RT1 = float4(encodedNormal, roughness);      // Normal + Roughness
