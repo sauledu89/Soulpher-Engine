@@ -72,12 +72,18 @@ class
 DeferredRenderer : public ISceneRenderer {
 public:
     /**
-     * @brief Crea todos los recursos GPU: G-Buffer textures, shadow DSV, shaders, samplers.
+     * @brief Crea todos los recursos GPU con dimensiones explícitas.
      * @param device Dispositivo Direct3D 11.
+     * @param width  Ancho del G-Buffer en píxeles (debe coincidir con el DSV del EditorViewportPass).
+     * @param height Alto del G-Buffer en píxeles.
      * @return S_OK si todos los recursos se crearon correctamente.
      */
     HRESULT
-    init(Device& device) override;
+    init(Device& device, unsigned int width, unsigned int height);
+
+    /** @brief Override de ISceneRenderer — llama al overload con las dimensiones actuales. */
+    HRESULT
+    init(Device& device) override { return init(device, m_renderWidth, m_renderHeight); }
 
     /**
      * @brief Redimensiona los G-Buffers cuando cambia el tamaño del viewport.
@@ -109,9 +115,9 @@ public:
     ID3D11ShaderResourceView*
     getShadowMapSRV() const override { return m_shadowDepthSRV.m_textureFromImg; }
 
-    /** @brief SRV del debug pre-shadow (para ImGui preview del shadow map). */
+    /** @brief SRV del debug pre-shadow (no usado — retorna nullptr). */
     ID3D11ShaderResourceView*
-    getPreShadowSRV() const override { return m_preShadowDebugPass.getSRV(); }
+    getPreShadowSRV() const override { return nullptr; }
 
     /** @brief SRV del G-Buffer RT0: Albedo (RGB) + Metallic (A). */
     ID3D11ShaderResourceView*
@@ -181,8 +187,18 @@ private:
     /** @brief Fullscreen quad: lee G-Buffer + shadow map y calcula iluminación. */
     void renderLightingPass(DeviceContext& deviceContext);
 
-    /** @brief Dibuja el skybox en la profundidad máxima (Z=1) para quedar al fondo. */
-    void renderSkyboxPass(DeviceContext& deviceContext, RenderScene& scene);
+    /**
+     * @brief Dibuja el skybox en la profundidad máxima (Z=1) para quedar al fondo.
+     * @param scene  Si `scene.skybox` es `nullptr` (no hay Skybox cargado), no hace nada.
+     * @param camera Se reenvía a `Skybox::render()`, que necesita `GetViewNoTranslation()`
+     *               de la cámara ACTIVA de este frame — por eso el parámetro se agregó aquí
+     *               (antes esta función no necesitaba saber nada de la cámara).
+     * @note Se llama DESPUÉS del lighting pass (que ya llenó el render target con el color
+     * iluminado de toda la escena) y ANTES del pase de transparencias — el orden importa: un
+     * skybox dibujado antes del lighting pass quedaría completamente tapado por el fullscreen
+     * quad, que escribe todos los píxeles sin hacer depth test.
+     */
+    void renderSkyboxPass(DeviceContext& deviceContext, RenderScene& scene, const Camera& camera);
 
     /** @brief Dibuja objetos transparentes en forward sobre el resultado deferred. */
     void renderTransparentPass(DeviceContext& deviceContext);
@@ -196,8 +212,19 @@ private:
     /** @brief Dibuja un objeto individual al shadow depth target. */
     void renderShadowObject(DeviceContext& deviceContext, const RenderObject& object);
 
-    /** @brief Dibuja la escena completa a un target arbitrario (para debug pre-shadow). */
-    void renderSceneToTarget(DeviceContext& deviceContext, RenderScene& scene, EditorViewportPass& targetPass, bool applyShadows);
+    /**
+     * @brief Ejecuta el pipeline deferred completo (shadow → G-Buffer → lighting →
+     * skybox → transparencias) contra un `EditorViewportPass` arbitrario en vez del
+     * back buffer — usado para renderizar la escena dentro del viewport de ImGui.
+     * @param scene Escena a dibujar (actores, luces, cámara activa, skybox).
+     * @param targetPass Render target de destino (ej. `m_viewportPass`), ya redimensionado
+     *                   a la resolución deseada.
+     * @param applyShadows Si es `false`, salta `renderShadowPass()` — útil para vistas de
+     *                     depuración donde el costo del shadow pass no aporta nada.
+     * @param camera Cámara activa del frame; se reenvía tal cual a `renderSkyboxPass()`
+     *               (ver su doc para el motivo del parámetro).
+     */
+    void renderSceneToTarget(DeviceContext& deviceContext, RenderScene& scene, EditorViewportPass& targetPass, bool applyShadows, const Camera& camera);
 
     // ── Creación de recursos ────────────────────────────────────────────────
 
@@ -252,12 +279,16 @@ private:
     ID3D11BlendState* m_premultipliedBlendState = nullptr; ///< Alpha premultiplicado.
     float m_blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
+    // ── Default fallback textures ───────────────────────────────────────────
+    ID3D11ShaderResourceView* m_defaultWhiteSRV      = nullptr; ///< 1×1 blanco (255,255,255,255): albedo/metallic/roughness/AO sin textura (neutro: texture.r=1 → sale el escalar de CBPerMaterial tal cual).
+    ID3D11ShaderResourceView* m_defaultFlatNormalSRV = nullptr; ///< 1×1 normal plana (128,128,255,255 → decodifica a (0,0,1) tangent-space): normal map sin textura.
+
     // ── Shadow Map ──────────────────────────────────────────────────────────
     Texture          m_shadowDepthTexture; ///< Textura R24G8_TYPELESS del shadow map.
     Texture          m_shadowDepthSRV;     ///< Alias SRV R24_UNORM_X8_TYPELESS para leer en PS.
     DepthStencilView m_shadowDSV;          ///< DSV para escribir durante el shadow pass.
     ShaderProgram    m_shadowShader;       ///< Solo VS (sin PS) para el shadow depth pass.
-    RasterizerState  m_shadowRasterizer;   ///< CULL_FRONT para reducir shadow acne.
+    RasterizerState  m_shadowRasterizer;   ///< CULL_BACK; el shadow acne se compensa con el bias fijo en ComputeShadow() (DeferredLighting.hlsl), no con cull de caras frontales.
     unsigned int     m_shadowMapSize = 2048; ///< Resolución del shadow map (cuadrado).
 
     // ── G-Buffer Shaders ────────────────────────────────────────────────────
@@ -287,7 +318,6 @@ private:
     RenderTargetView m_gBufferEmissiveAlphaRTV;
 
     // ── Debug ───────────────────────────────────────────────────────────────
-    EditorViewportPass m_preShadowDebugPass; ///< Target de debug para visualizar shadow map en ImGui.
     bool         m_applyShadows  = true;  ///< Si false, ilumina sin sombras (debug).
     unsigned int m_renderWidth   = 1280;
     unsigned int m_renderHeight  = 720;

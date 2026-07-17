@@ -2,9 +2,25 @@
 
 Motor gráfico modular desarrollado desde cero en **DirectX 11** como parte del curso de **Arquitectura de Motores Gráficos** y **Programación de Materiales** impartidas por el profesor **Roberto Charretón Kaplun**.
 
-Implementa un pipeline gráfico de dos etapas (Forward Rendering con shadow maps + arquitectura Deferred Rendering) con carga de modelos FBX, sistema de actores ECS, cámara orbital interactiva, sistema de materiales PBR e interfaz de usuario con **Dear ImGui**.
+Implementa un **Deferred Renderer** completo (G-Buffer de 4 render targets + lighting pass multi-luz + shadow maps + skybox) con carga de modelos FBX, sistema de actores ECS, Light Actors editables, gizmos de transformación en el viewport, cámara orbital interactiva, sistema de materiales PBR e interfaz de usuario con **Dear ImGui**.
 
 <img width="1179" height="992" alt="image" src="https://github.com/user-attachments/assets/0e4a3658-3327-4eee-a05a-296b82831d47" />
+
+---
+
+## Parcial 2 — qué cambió desde Parcial 1
+
+El **Parcial 1** dejó la arquitectura del Deferred Renderer construida pero sin shaders (el motor seguía renderizando en Forward). En el **Parcial 2** se completó el pipeline deferred y se construyeron encima las herramientas de editor que le dan forma de motor "usable" en vez de solo "funcional":
+
+- **Deferred Renderer con shaders reales** (`DeferredGBuffer.hlsl` + `DeferredLighting.hlsl` + `ShadowMap.hlsl`) — ya es el único camino de render activo, `ForwardRenderer` quedó como código legado sin usar en `render()`.
+- **Multi-light real**: hasta 8 luces Directional/Point/Spot simultáneas con atenuación por distancia y cono de spot, todas evaluadas en el lighting pass.
+- **Light Actors**: cualquier luz es ahora un `Actor` con `LightComponent`, editable desde el Inspector, con su propio ícono wireframe en el viewport y picking por clic.
+- **Gizmos de transformación** (Translate/Rotate/Scale) para mover, rotar y escalar actores directamente en el viewport.
+- **Skybox** equirectangular (DDS) con un parser de DDS propio, escrito para evitar un crash del loader legado de D3DX11 con BC7 + DX10 header.
+- **`LogManager`** centraliza todos los logs del motor en un buffer que la consola de la UI lee en tiempo real (antes solo iban a `OutputDebugString`).
+- **Editor UI**: tema visual propio (NES), paneles redimensionables/movibles, debug de los 4 canales del G-Buffer, outliner con duplicar/borrar/crear actores.
+
+> 📘 **Nota GameDev:** que un pipeline "funcione" en el sentido de compilar y no crashear (Parcial 1) es un hito distinto a que sea *usable* para producir contenido (Parcial 2). En estudios reales estas dos etapas suelen dividirse entre ingeniería de render y herramientas de editor — aquí las hizo la misma persona, pero es útil notar que son disciplinas distintas: la primera pregunta es "¿es correcto matemáticamente?", la segunda es "¿puede un diseñador usar esto sin leer el código fuente?".
 
 ---
 
@@ -23,16 +39,25 @@ Implementa un pipeline gráfico de dos etapas (Forward Rendering con shadow maps
   - `CBPerMaterial` (b2): `BaseColor`, `Metallic`, `Roughness`, `AO`, `NormalScale`, `EmissiveStrength`, `AlphaCutoff` (64 bytes, listo para PBR).
 
 ### Rendering
-- **Forward Renderer** con iluminación Lambert difuso + Blinn-Phong especular.
-- **Shadow Maps** ortográficos (2048×2048, formato `R24G8_TYPELESS`) con pasada depth-only desde el punto de vista de la luz.
-- **PCF 3×3** (Percentage Closer Filtering) para bordes de sombra suavizados.
+- **Deferred Renderer** — pipeline activo por defecto, con shaders HLSL completos:
+  - `DeferredGBuffer.hlsl` — geometry pass a 4 render targets simultáneos: Albedo+Metallic, Normal+Roughness, WorldPos+AO, Emissive+Alpha.
+  - `DeferredLighting.hlsl` — lighting pass de pantalla completa que itera hasta 8 luces (`LightCount`), con atenuación real por distancia para Point/Spot y cono de falloff para Spot.
+  - `ShadowMap.hlsl` — shadow depth pass ortográfico (2048×2048, `R24G8_TYPELESS`) desde el punto de vista de la luz principal, con **PCF 3×3** para bordes suavizados.
+  - Pasada de **Skybox** y de transparentes en forward sobre el resultado ya iluminado.
+- **`ForwardRenderer`** — pipeline original (Lambert + Blinn-Phong + shadow map, un único light), conservado en el código pero ya no es el camino activo de `render()`; útil como referencia y para el shadow-matrix legado.
 - **Interfaz `ISceneRenderer`** — abstracción que permite intercambiar el renderer activo (Forward / Deferred) sin modificar `BaseApp`.
-- **Deferred Renderer** (arquitectura completa, shaders HLSL pendientes de clase):
-  - G-buffer con 4 render targets simultáneos: Albedo+Metallic, Normal+Roughness, WorldPos+AO, Emissive+Alpha.
-  - Lighting pass con quad de pantalla completa.
-  - Pasada de skybox y transparentes en forward sobre el resultado deferred.
 - **Sistema de materiales**: `Material` (definición) + `MaterialInstance` (bind por draw call, limpieza de slots 0–5).
 - **`RenderScene`** — contenedor de frame con listas separadas de objetos opacos, transparentes, luces y skybox.
+
+> 📘 **Nota GameDev:** el motivo técnico de mover todo a deferred es que el costo de iluminación deja de escalar con el número de *triángulos* y pasa a escalar con el número de *píxeles visibles* — con 8 luces activas, forward tendría que re-evaluar el shader de cada luz por cada fragmento de cada objeto que se solape en pantalla (overdraw), mientras que deferred lo calcula una sola vez por píxel final leyendo el G-Buffer. Es la misma razón por la que Unreal Engine usa deferred como su renderer por defecto (con Forward+ como alternativa para VR/transparencias, donde el overdraw es bajo y el ancho de banda del G-Buffer es más caro que las luces).
+
+### Skybox
+- Carga de un **panorama equirectangular** (`Assets/skybox.dds`, formato BC7 + DX10 header) — no un cubemap de 6 caras.
+- Parser de DDS **escrito a mano** (`Texture::LoadDdsTexture`) que llama directo a `CreateTexture2D`/`CreateShaderResourceView`, evitando el loader legado `D3DX11CreateShaderResourceViewFromFileA` (crashea con la combinación BC7 + DX10 header en este SDK de 2010).
+- `Skybox.hlsl` mapea la dirección de vista a UV esférica con `atan2`/`asin`, y fuerza `z = w` en el vertex shader para que el skybox siempre quede al fondo del depth buffer sin necesitar su propia geometría de cubo real.
+- Falla de forma no fatal: si el DDS no carga, la escena sigue renderizando sin fondo.
+
+> 📘 **Nota GameDev:** un panorama equirectangular (2:1, como un mapa mundi) es más barato de generar y editar en herramientas 2D que un cubemap de 6 caras, pero es más caro de muestrear en tiempo real por el `atan2`/`asin` trigonométrico frente al simple `TextureCube::Sample` de un cubemap. Motores como Unreal aceptan HDRIs equirectangulares como fuente pero los convierten a cubemap en un paso de cocción (bake) antes de usarlos en runtime — aquí se muestrea directo cada frame porque el motor no tiene pipeline de asset baking.
 
 ### Carga de recursos
 - **Sistema de mallas GPU** (`Mesh`, `Submesh`) con vertex buffer, index buffer y `localTransform` por submalla.
@@ -50,16 +75,37 @@ Implementa un pipeline gráfico de dos etapas (Forward Rendering con shadow maps
 - **`Actor`** como contenedor de componentes: `Transform`, `MeshComponent`, `LightComponent`.
 - **`Transform`** — posición, rotación y escala con actualización de matriz World.
 - Flags de shadow por actor: `castShadow`, `receiveShadow`.
+- **`LightComponent`** — convierte cualquier `Actor` en un **Light Actor** (Directional/Point/Spot). No guarda posición/dirección propia: las combina con el `Transform` del Actor dueño cada frame en `resolve()`, así que mover o rotar el Actor mueve la luz automáticamente, sin pasos manuales de sincronización.
+
+> 📘 **Nota GameDev:** convertir una luz en "un Actor más" (en vez de un objeto especial fuera del ECS) es el mismo patrón que usa Unreal Engine 5 (`APointLight`/`ASpotLight`/`ADirectionalLight`, cada uno envolviendo un `ULightComponent`). La ventaja es reutilizar todo el sistema existente — Transform, Inspector, gizmos, outliner, duplicar/borrar — sin escribir un camino especial: una linterna que sigue al jugador es literalmente el mismo tipo de objeto que una lámpara estática, solo que su Transform cambia cada frame.
+
+### Herramientas de editor (viewport)
+- **Gizmos de transformación** (`GizmoRenderer`) para el actor seleccionado, con geometría procedural (conos + cilindros) y color de "affordance" (resalta al pasar el mouse / al arrastrar):
+  - **Translate** (`T`) — mueve sobre los 3 ejes del mundo.
+  - **Rotate** (`E`) — rota sobre los 3 ejes.
+  - **Scale** (`R`) — escala por eje, más un handle central para **escala uniforme** en los 3 ejes a la vez.
+  - Tamaño constante en pantalla (`screenScale`, independiente de la distancia a cámara) y ejes fijos en espacio del mundo (no local), para que el gizmo se comporte de forma predecible sin importar la rotación del objeto.
+- **Picking unificado**: un solo ray-test por clic cubre tanto los ejes del gizmo como el AABB de los actores con malla y el punto de los íconos de luz — así seleccionar, arrastrar un eje o hacer clic en un ícono de luz usan el mismo pipeline de entrada.
+- **`LightGizmoRenderer`** — íconos wireframe (flecha=Directional, esfera=Point, cono=Spot) para visualizar y seleccionar Light Actors en el viewport, ya que no tienen malla propia.
+- **`EditorViewportPass`** — render target offscreen que permite mostrar la escena dentro de una ventana ImGui (con post-procesado futuro) en vez de directo al back buffer.
+- **Redimensionado en vivo**: la ventana, el swap chain, los G-Buffers y el aspect ratio de la cámara se recalculan cuando cambia el tamaño del viewport, sin reiniciar el motor.
+
+> 📘 **Nota GameDev:** trabajar en espacio del mundo para los ejes del gizmo (en vez de espacio local del objeto) es una decisión de UX deliberada, no solo técnica: si rotas un objeto 45° y el gizmo rotara con él, mover "el eje rojo" dejaría de significar "mover en X del mundo" — cosa que confunde a cualquiera que edite una escena. Unreal y Unity ofrecen ambos modos (World/Local) y por defecto casi todos los editores abren en World precisamente por esto.
 
 ### Utilidades de editor
 - **`Camera`** FPS con basis vectors explícitos (right/up/look), `updateViewMatrix()` con re-ortogonalización Gram-Schmidt y `setLens()` para proyección perspectiva.
-- **`EditorViewportPass`** — render target offscreen que habilita post-procesado y viewport dentro de ImGui.
 - **`LayoutBuilder`** — fluent builder para construir `D3D11_INPUT_ELEMENT_DESC[]` de forma declarativa.
+- **`LogManager`** — singleton central de logging (`LOG_MESSAGE`/`LOG_WARNING`/`LOG_ERROR`) que alimenta tanto la consola de la UI como el Output de Visual Studio, reemplazando el uso disperso de `OutputDebugStringW` directo.
 - **Cámara orbital interactiva** en `BaseApp`:
   - Botón derecho del mouse: órbita (yaw/pitch).
   - Rueda del mouse: zoom.
   - Botón central del mouse: pan.
-- **Interfaz de usuario** con **Dear ImGui** (rama docking): inspector de actores, outliner de escena y panel de control de luz en tiempo real.
+- **Interfaz de usuario** con **Dear ImGui** (rama docking):
+  - **Tema visual propio** ("NES"): fondo gris claro, acentos rojo/naranja, pensado para alto contraste y legibilidad en sesiones largas.
+  - **Inspector** con sección "Transform" (posición/rotación/escala, con botón de vínculo XYZ para editar los 3 ejes a la vez) y sección "Light" condicional (tipo, color, intensidad, range, ángulo de spot) para Light Actors.
+  - **Outliner** con botón "+ Add Light" y menú contextual (clic derecho) para **duplicar** y **borrar** actores.
+  - **Panel de debug del G-Buffer**: 4 ventanas independientes (Albedo / Normals / WorldPos / Emissive) con checkbox de mostrar/ocultar cada canal.
+  - **Consola** con niveles Message/Warning/Error, filtrable, con auto-scroll.
 
 ### Post-build
 - Copia automática de `libfbxsdk.dll` al directorio de salida al compilar.
@@ -117,11 +163,13 @@ Soulpher-Engine/
 │   ├── RasterizerState.h            # ID3D11RasterizerState (API nueva, dos overloads)
 │   ├── MeshComponent.h              # Malla en CPU (SimpleVertex + índices)
 │   ├── ModelLoader.h                # Importador FBX SDK con generación de tangentes
-│   ├── UserInterface.h              # Dear ImGui: inspector, outliner, panel de luz
+│   ├── UserInterface.h              # Dear ImGui: inspector, outliner, consola, G-Buffer debug
 │   ├── Rendering/
 │   │   ├── ISceneRenderer.h         # Interfaz abstracta Forward/Deferred
-│   │   ├── ForwardRenderer.h        # Shadow pass + bind/unbind shadow map
-│   │   ├── DeferredRenderer.h       # G-buffer 4-MRT + lighting pass + transparentes
+│   │   ├── ForwardRenderer.h        # Shadow pass + bind/unbind shadow map (legado, no activo)
+│   │   ├── DeferredRenderer.h       # G-buffer 4-MRT + lighting pass multi-luz + skybox + transparentes
+│   │   ├── GizmoRenderer.h          # Gizmos de transformación (Translate/Rotate/Scale)
+│   │   ├── LightGizmoRenderer.h     # Íconos wireframe de Light Actors (flecha/esfera/cono)
 │   │   ├── Material.h               # Definición de material (shader + rasterizer)
 │   │   ├── MaterialInstance.h       # Bind de material por draw call
 │   │   ├── Mesh.h                   # Submesh GPU con localTransform
@@ -132,29 +180,39 @@ Soulpher-Engine/
 │   │   ├── Entity.h                 # Clase base de entidad
 │   │   ├── Component.h              # Clase base de componente
 │   │   ├── Transform.h              # Posición, rotación y escala → World matrix
-│   │   └── LightComponent.h         # Datos de luz como componente
+│   │   └── LightComponent.h         # Convierte un Actor en Light Actor (Directional/Point/Spot)
 │   └── EngineUtilities/
 │       └── Utilities/
 │           ├── Camera.h             # Cámara FPS con basis vectors y Gram-Schmidt
 │           ├── EditorViewportPass.h # Render target offscreen para el editor
 │           ├── LayoutBuilder.h      # Fluent builder para D3D11_INPUT_ELEMENT_DESC
-│           └── Skybox.h             # Stub de skybox (implementación pendiente)
+│           ├── LogManager.h         # Logging centralizado (LOG_MESSAGE/WARNING/ERROR)
+│           └── Skybox.h             # Skybox equirectangular (DDS, parser propio)
 ├── src/
 │   ├── BaseApp.cpp
+│   ├── Skybox.cpp
 │   ├── ECS/
 │   │   ├── Actor.cpp
 │   │   └── Transform.cpp
 │   ├── Rendering/
 │   │   ├── ForwardRenderer.cpp
 │   │   ├── DeferredRenderer.cpp
+│   │   ├── GizmoRenderer.cpp
+│   │   ├── LightGizmoRenderer.cpp
 │   │   ├── MaterialInstance.cpp
 │   │   ├── Mesh.cpp
 │   │   └── RenderScene.cpp
 │   └── EditorViewportPass.cpp
 ├── Soulpher-Engine.cpp              # Punto de entrada Win32 (wWinMain + WndProc)
-├── Soulpher-Engine.fx               # VS + PS (Lambert + Blinn-Phong + PCF) + ShadowPS
+├── Soulpher-Engine.fx               # VS + PS (Lambert + Blinn-Phong + PCF) + ShadowPS (forward, legado)
+├── DeferredGBuffer.hlsl             # Geometry pass del deferred (4 MRT)
+├── DeferredLighting.hlsl            # Lighting pass del deferred (multi-luz, fullscreen quad)
+├── ShadowMap.hlsl                   # Shadow depth pass (luz principal)
+├── Gizmo.fx                         # Shader unlit (posición+color) para gizmos y luces
+├── Skybox.hlsl                      # Sampling equirectangular (atan2/asin) para el skybox
 ├── ImGui/                           # Dear ImGui rama docking (1.83 WIP)
-├── ModelsFBX/                       # Assets de modelos y texturas (ver sección de assets)
+├── ModelsFBX/                       # Modelos FBX y texturas (ver sección de assets)
+├── Assets/                          # Assets no-FBX (skybox.dds)
 └── bin/
     └── x64/                         # Ejecutable y DLLs de runtime
 ```
@@ -167,16 +225,19 @@ El directorio de trabajo al ejecutarse desde Visual Studio es la **raíz del pro
 
 ```
 Soulpher-Engine/                     <- directorio de trabajo
-  Soulpher-Engine.fx                 <- shader principal
+  Soulpher-Engine.fx                 <- shader forward (legado)
+  DeferredGBuffer.hlsl               <- shader geometry pass del deferred
+  DeferredLighting.hlsl              <- shader lighting pass del deferred
+  ShadowMap.hlsl                     <- shader shadow depth pass
+  Gizmo.fx                           <- shader unlit para gizmos y luces
+  Skybox.hlsl                        <- shader del skybox equirectangular
   ModelsFBX/
     piedra.jpg                       <- textura del suelo
-    martis-ashura-king/
-      Martis/
-        hero_asura.fbx               <- modelo 3D principal
-        axl_D.png                    <- textura difusa
     kirby/
-      KirbyTest.fbx                  <- modelo 3D secundario
+      KirbyTest.fbx                  <- modelo 3D cargado por defecto
       baking.png                     <- textura del modelo
+  Assets/
+    skybox.dds                       <- panorama equirectangular (BC7 + DX10 header)
   bin/
     x64/
       Soulpher-Engine_d.exe
@@ -194,15 +255,17 @@ Soulpher-Engine/                     <- directorio de trabajo
 3. Abre `Soulpher-Engine_2010.sln` con Visual Studio 2022.
 4. Selecciona configuración **Debug | x64** (recomendada).
 5. Compila (`Ctrl + Shift + B`). El post-build copia `libfbxsdk.dll` automáticamente.
-6. Coloca los assets en `ModelsFBX\` según la estructura indicada arriba.
+6. Coloca los assets en `ModelsFBX\` y `Assets\` según la estructura indicada arriba (el skybox es opcional: si falta, el motor sigue funcionando sin fondo).
 7. Ejecuta desde Visual Studio (`F5`).
 
 Al iniciar deberías ver:
-- Dos modelos FBX cargados (Martis Ashura King y Kirby) con texturas aplicadas.
+- Modelo FBX de Kirby cargado con su textura aplicada.
 - Plano de suelo con textura `piedra.jpg` en tiling 6×6 recibiendo sombras.
-- Sombras suaves con PCF 3×3 proyectadas por los modelos sobre el suelo.
+- Sombras suaves con PCF 3×3 proyectadas por Kirby sobre el suelo.
+- Un Light Actor "Sun" (Directional) ya en la escena, editable desde el Inspector.
+- Skybox equirectangular de fondo (si `Assets/skybox.dds` cargó correctamente).
 - Cámara orbital controlable con el mouse (orbitar, zoom, pan).
-- Panel **ImGui** con inspector de actores, outliner de escena y control de dirección/color de luz en tiempo real.
+- Panel **ImGui** (tema NES) con inspector de actores, outliner con creación/duplicado/borrado, gizmos de transformación (`T`/`E`/`R` sobre el actor seleccionado) y debug del G-Buffer.
 
 ---
 

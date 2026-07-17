@@ -85,11 +85,11 @@ MeshComponent ModelLoader::LoadOBJModel(const std::string& filePath) {
 bool ModelLoader::InitializeFBXManager() {
     lSdkManager = FbxManager::Create();
     if (!lSdkManager) {
-        ERROR("ModelLoader", "FbxManager::Create()", "Unable to create FBX Manager!");
+        LOG_ERROR("ModelLoader", "FbxManager::Create()", "Unable to create FBX Manager!");
         return false;
     }
     else {
-        MESSAGE("ModelLoader", "ModelLoader", "Autodesk FBX SDK version " << lSdkManager->GetVersion());
+        LOG_MESSAGE("ModelLoader", "ModelLoader", "Autodesk FBX SDK version " + std::string(lSdkManager->GetVersion()));
     }
 
     FbxIOSettings* ios = FbxIOSettings::Create(lSdkManager, IOSROOT);
@@ -97,11 +97,11 @@ bool ModelLoader::InitializeFBXManager() {
 
     lScene = FbxScene::Create(lSdkManager, "MyScene");
     if (!lScene) {
-        ERROR("ModelLoader", "FbxScene::Create()", "Unable to create FBX Scene!");
+        LOG_ERROR("ModelLoader", "FbxScene::Create()", "Unable to create FBX Scene!");
         return false;
     }
     else {
-        MESSAGE("ModelLoader", "ModelLoader", "FBX Scene created successfully.");
+        LOG_MESSAGE("ModelLoader", "ModelLoader", "FBX Scene created successfully.");
     }
     return true;
 }
@@ -125,26 +125,26 @@ bool ModelLoader::LoadFBXModel(const std::string& filePath) {
     if (InitializeFBXManager()) {
         FbxImporter* lImporter = FbxImporter::Create(lSdkManager, "");
         if (!lImporter) {
-            ERROR("ModelLoader", "FbxImporter::Create()", "Unable to create FBX Importer!");
+            LOG_ERROR("ModelLoader", "FbxImporter::Create()", "Unable to create FBX Importer!");
             return false;
         }
         else {
-            MESSAGE("ModelLoader", "ModelLoader", "FBX Importer created successfully.");
+            LOG_MESSAGE("ModelLoader", "ModelLoader", "FBX Importer created successfully.");
         }
 
         if (!lImporter->Initialize(filePath.c_str(), -1, lSdkManager->GetIOSettings())) {
-            ERROR("ModelLoader", "FbxImporter::Initialize()", "Unable to initialize FBX Importer! Error: " << lImporter->GetStatus().GetErrorString());
+            LOG_ERROR("ModelLoader", "FbxImporter::Initialize()", "Unable to initialize FBX Importer! Error: " + std::string(lImporter->GetStatus().GetErrorString()));
             lImporter->Destroy();
             return false;
         }
 
         if (!lImporter->Import(lScene)) {
-            ERROR("ModelLoader", "FbxImporter::Import()", "Unable to import FBX Scene! Error: " << lImporter->GetStatus().GetErrorString());
+            LOG_ERROR("ModelLoader", "FbxImporter::Import()", "Unable to import FBX Scene! Error: " + std::string(lImporter->GetStatus().GetErrorString()));
             lImporter->Destroy();
             return false;
         }
         else {
-            MESSAGE("ModelLoader", "ModelLoader", "FBX Scene imported successfully.");
+            LOG_MESSAGE("ModelLoader", "ModelLoader", "FBX Scene imported successfully.");
             modelName = lImporter->GetFileName();
         }
 
@@ -162,7 +162,7 @@ bool ModelLoader::LoadFBXModel(const std::string& filePath) {
             return true;
         }
         else {
-            ERROR("ModelLoader", "FbxScene::GetRootNode()", "Unable to get root node from FBX Scene!");
+            LOG_ERROR("ModelLoader", "FbxScene::GetRootNode()", "Unable to get root node from FBX Scene!");
             return false;
         }
     }

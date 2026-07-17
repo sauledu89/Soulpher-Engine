@@ -7,10 +7,6 @@
  * al back-buffer. El resultado puede mostrarse como imagen en ImGui (`getSRV()`)
  * o pasar a un pass posterior.
  *
- * El orden de los campos privados es crítico: DeferredRenderer.cpp accede a ellos
- * via reinterpret_cast (EditorViewportPassAccess) para extraer el RTV y DSV nativos.
- * No reordenar ni cambiar los tipos sin actualizar DeferredRenderer.cpp.
- *
  * @note [GameDev] Esto es lo que Unity llama "RenderTexture" y Unreal "SceneRenderTarget".
  * Es el building block de cualquier efecto post-proceso: render → textura → quad → pantalla.
  *
@@ -77,11 +73,16 @@ public:
     /** @brief SRV de la textura de color para leer en shaders o ImGui. */
     ID3D11ShaderResourceView* getSRV()    const { return m_colorSRV.m_textureFromImg; }
 
+    /** @brief RTV nativo para enlazar como destino de render. */
+    ID3D11RenderTargetView*   getRTV()    const { return m_rtv.get(); }
+
+    /** @brief DSV nativo para enlazar como buffer de profundidad. */
+    ID3D11DepthStencilView*   getDSV()    const { return m_dsv.m_depthStencilView; }
+
     unsigned int getWidth()  const { return m_width; }
     unsigned int getHeight() const { return m_height; }
 
 private:
-    // ¡ORDEN CRÍTICO! EditorViewportPassAccess en DeferredRenderer.cpp depende de este layout.
     Texture          m_colorTexture;   ///< Textura R8G8B8A8 de color (RTV + SRV bind flags).
     Texture          m_colorSRV;       ///< Alias SRV sobre m_colorTexture (para leer en shaders).
     RenderTargetView m_rtv;            ///< Vista de render target sobre m_colorTexture.

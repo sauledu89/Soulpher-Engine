@@ -63,8 +63,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
  */
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
+    // Abre una consola auxiliar para diagnostico en tiempo real
+    AllocConsole();
+    FILE* pf = nullptr;
+    freopen_s(&pf, "CONOUT$", "w", stdout);
+    freopen_s(&pf, "CONOUT$", "w", stderr);
+    SetConsoleTitleA("Soulpher-Engine — Debug Console");
+
+    // Directorio de trabajo real en tiempo de ejecucion
+    char cwd[512] = {};
+    GetCurrentDirectoryA(512, cwd);
+    printf("[BOOT] Working directory : %s\n", cwd);
+    printf("[BOOT] -----------------------------------------------\n");
+
     BaseApp app;
-    return app.run(hInstance, hPrevInstance, lpCmdLine, nCmdShow, WndProc);
+    int result = app.run(hInstance, hPrevInstance, lpCmdLine, nCmdShow, WndProc);
+
+    printf("[BOOT] App exited with code %d\n", result);
+    FreeConsole();
+    return result;
 }
 
 /**

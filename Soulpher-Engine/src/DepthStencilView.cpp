@@ -38,11 +38,11 @@
   */
 HRESULT DepthStencilView::init(Device& device, Texture& depthStencil, DXGI_FORMAT format) {
     if (!device.m_device) {
-        ERROR("DepthStencilView", "init", "Device is null.");
+        LOG_ERROR("DepthStencilView", "init", "Device is null.");
         return E_POINTER;
     }
     if (!depthStencil.m_texture) {
-        ERROR("DepthStencilView", "init", "Texture is null.");
+        LOG_ERROR("DepthStencilView", "init", "Texture is null.");
         return E_POINTER;
     }
 
@@ -71,7 +71,7 @@ HRESULT DepthStencilView::init(Device& device, Texture& depthStencil, DXGI_FORMA
     );
 
     if (FAILED(hr)) {
-        ERROR("DepthStencilView", "init",
+        LOG_ERROR("DepthStencilView", "init",
             ("Failed to create depth stencil view. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -89,11 +89,11 @@ HRESULT DepthStencilView::init(Device& device, Texture& depthStencil, DXGI_FORMA
  */
 void DepthStencilView::render(DeviceContext& deviceContext) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("DepthStencilView", "render", "Device context is null.");
+        LOG_ERROR("DepthStencilView", "render", "Device context is null.");
         return;
     }
     if (!m_depthStencilView) {
-        ERROR("DepthStencilView", "render", "DepthStencilView is null.");
+        LOG_ERROR("DepthStencilView", "render", "DepthStencilView is null.");
         return;
     }
 
@@ -117,11 +117,11 @@ void DepthStencilView::render(DeviceContext& deviceContext) {
 HRESULT DepthStencilView::init(Device& device, Texture& depthStencil,
                                 DXGI_FORMAT format, D3D11_DSV_DIMENSION viewDimension) {
     if (!device.m_device) {
-        ERROR("DepthStencilView", "init", "Device is null.");
+        LOG_ERROR("DepthStencilView", "init", "Device is null.");
         return E_POINTER;
     }
     if (!depthStencil.m_texture) {
-        ERROR("DepthStencilView", "init", "Texture is null.");
+        LOG_ERROR("DepthStencilView", "init", "Texture is null.");
         return E_POINTER;
     }
 
@@ -134,7 +134,7 @@ HRESULT DepthStencilView::init(Device& device, Texture& depthStencil,
     HRESULT hr = device.m_device->CreateDepthStencilView(
         depthStencil.m_texture, &dsvDesc, &m_depthStencilView);
     if (FAILED(hr)) {
-        ERROR("DepthStencilView", "init",
+        LOG_ERROR("DepthStencilView", "init",
             ("Failed to create DSV (explicit dim). HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }

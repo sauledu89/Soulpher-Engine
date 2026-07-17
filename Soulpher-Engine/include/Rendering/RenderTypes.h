@@ -192,6 +192,7 @@ struct CBPerFrame {
     XMFLOAT4    LightDirectionsIntensities[kMaxSceneLights]{};       ///< xyz=dirección, w=intensidad de cada luz dinámica.
     int         LightCount = 0;                                      ///< Número de luces activas en el frame actual.
     XMFLOAT3    pad2 = XMFLOAT3(0.0f, 0.0f, 0.0f);                 ///< Padding para alinear LightCount a 16 bytes.
+    XMFLOAT4    LightSpotAngles[kMaxSceneLights]{};                  ///< .x = semiángulo del cono (radianes) de cada luz Spot; resto sin usar.
 };
 
 /**

@@ -17,7 +17,7 @@ HRESULT RasterizerState::init(Device& device,
                                bool            frontCCW,
                                bool            depthClip) {
     if (!device.m_device) {
-        ERROR("RasterizerState", "init", "Device is null.");
+        LOG_ERROR("RasterizerState", "init", "Device is null.");
         return E_POINTER;
     }
 
@@ -35,7 +35,7 @@ HRESULT RasterizerState::init(Device& device,
 
     HRESULT hr = device.m_device->CreateRasterizerState(&desc, &m_rasterizerState);
     if (FAILED(hr)) {
-        ERROR("RasterizerState", "init", "Failed to create RasterizerState.");
+        LOG_ERROR("RasterizerState", "init", "Failed to create RasterizerState.");
         return hr;
     }
     return S_OK;

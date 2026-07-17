@@ -103,8 +103,21 @@ public:
      * @brief Asigna las mallas al actor.
      * @param device Dispositivo de render para inicializar los buffers.
      * @param meshes Vector de componentes de malla.
+     *
+     * @note Además de crear los buffers GPU, recalcula el AABB local
+     * (@ref getLocalBoundsMin / @ref getLocalBoundsMax) a partir de los
+     * vértices recibidos — usado por el picking (ray vs AABB) del viewport.
      */
     void setMesh(Device& device, std::vector<MeshComponent> meshes);
+
+    /** @brief Esquina mínima del bounding box en espacio local (antes de aplicar World). */
+    const XMFLOAT3& getLocalBoundsMin() const { return m_localBoundsMin; }
+
+    /** @brief Esquina máxima del bounding box en espacio local (antes de aplicar World). */
+    const XMFLOAT3& getLocalBoundsMax() const { return m_localBoundsMax; }
+
+    /** @brief True si el actor tiene geometría válida (AABB calculado desde al menos un vértice). */
+    bool hasBounds() const { return m_hasBounds; }
 
     /** @brief Obtiene el nombre del actor (referencia mutable, permite edición desde UI). */
     std::string& getName() { return m_name; }
@@ -175,4 +188,9 @@ private:
     std::string m_name = "Actor";          ///< Nombre identificador del actor.
     bool castShadow = true;                ///< Indica si el actor proyecta sombras.
     bool m_receiveShadow = true;           ///< Indica si el actor recibe sombras.
+
+    // === Bounding box local (picking) ===
+    XMFLOAT3 m_localBoundsMin = XMFLOAT3(0.0f, 0.0f, 0.0f); ///< Esquina mínima del AABB local.
+    XMFLOAT3 m_localBoundsMax = XMFLOAT3(0.0f, 0.0f, 0.0f); ///< Esquina máxima del AABB local.
+    bool     m_hasBounds      = false;                       ///< True una vez que setMesh() proceso al menos un vértice.
 };

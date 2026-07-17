@@ -44,11 +44,11 @@
 HRESULT
 Viewport::init(const Window& window) {
     if (!window.m_hWnd) {
-        ERROR("Viewport", "init", "Window handle (m_hWnd) is nullptr");
+        LOG_ERROR("Viewport", "init", "Window handle (m_hWnd) is nullptr");
         return E_POINTER;
     }
     if (window.m_width == 0 || window.m_height == 0) {
-        ERROR("Viewport", "init", "Window dimensions are zero.");
+        LOG_ERROR("Viewport", "init", "Window dimensions are zero.");
         return E_INVALIDARG;
     }
 
@@ -74,7 +74,7 @@ Viewport::init(const Window& window) {
 HRESULT
 Viewport::init(unsigned int width, unsigned int height) {
     if (width == 0 || height == 0) {
-        ERROR("Viewport", "init", "Window dimensions are zero.");
+        LOG_ERROR("Viewport", "init", "Window dimensions are zero.");
         return E_INVALIDARG;
     }
 
@@ -99,7 +99,7 @@ Viewport::init(unsigned int width, unsigned int height) {
  */
 void Viewport::render(DeviceContext& deviceContext) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("Viewport", "render", "Device context is not set.");
+        LOG_ERROR("Viewport", "render", "Device context is not set.");
         return;
     }
     deviceContext.RSSetViewports(1, &m_viewport);

@@ -30,15 +30,15 @@
   */
 HRESULT Buffer::init(Device& device, const MeshComponent& mesh, unsigned int bindFlag) {
     if (!device.m_device) {
-        ERROR("Buffer", "init", "Device is null.");
+        LOG_ERROR("Buffer", "init", "Device is null.");
         return E_POINTER;
     }
     if ((bindFlag & D3D11_BIND_VERTEX_BUFFER) && mesh.m_vertex.empty()) {
-        ERROR("Buffer", "init", "Vertex buffer is empty");
+        LOG_ERROR("Buffer", "init", "Vertex buffer is empty");
         return E_INVALIDARG;
     }
     if ((bindFlag & D3D11_BIND_INDEX_BUFFER) && mesh.m_index.empty()) {
-        ERROR("Buffer", "init", "Index buffer is empty");
+        LOG_ERROR("Buffer", "init", "Index buffer is empty");
         return E_INVALIDARG;
     }
 
@@ -71,11 +71,11 @@ HRESULT Buffer::init(Device& device,
     unsigned int elementStride,
     unsigned int bindFlag) {
     if (!device.m_device) {
-        ERROR("Buffer", "init", "Device is null.");
+        LOG_ERROR("Buffer", "init", "Device is null.");
         return E_POINTER;
     }
     if (!data || elementCount == 0 || elementStride == 0) {
-        ERROR("Buffer", "init", "data, elementCount and elementStride must be non-zero.");
+        LOG_ERROR("Buffer", "init", "data, elementCount and elementStride must be non-zero.");
         return E_INVALIDARG;
     }
 
@@ -105,11 +105,11 @@ HRESULT Buffer::init(Device& device,
  */
 HRESULT Buffer::init(Device& device, unsigned int ByteWidth) {
     if (!device.m_device) {
-        ERROR("Buffer", "init", "Device is null.");
+        LOG_ERROR("Buffer", "init", "Device is null.");
         return E_POINTER;
     }
     if (ByteWidth == 0) {
-        ERROR("Buffer", "init", "ByteWidth is zero");
+        LOG_ERROR("Buffer", "init", "ByteWidth is zero");
         return E_INVALIDARG;
     }
     m_stride = ByteWidth;
@@ -143,11 +143,11 @@ void Buffer::update(DeviceContext& deviceContext,
     unsigned int SrcRowPitch,
     unsigned int SrcDepthPitch) {
     if (!m_buffer) {
-        ERROR("Buffer", "update", "m_buffer is null.");
+        LOG_ERROR("Buffer", "update", "m_buffer is null.");
         return;
     }
     if (!pSrcData) {
-        ERROR("Buffer", "update", "pSrcData is null.");
+        LOG_ERROR("Buffer", "update", "pSrcData is null.");
         return;
     }
 
@@ -170,11 +170,11 @@ void Buffer::render(DeviceContext& deviceContext,
     bool setPixelShader,
     DXGI_FORMAT format) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("Buffer", "render", "DeviceContext is nullptr.");
+        LOG_ERROR("Buffer", "render", "DeviceContext is nullptr.");
         return;
     }
     if (!m_buffer) {
-        ERROR("Buffer", "render", "m_buffer is null.");
+        LOG_ERROR("Buffer", "render", "m_buffer is null.");
         return;
     }
 
@@ -203,7 +203,7 @@ void Buffer::render(DeviceContext& deviceContext,
         break;
 
     default:
-        ERROR("Buffer", "render", "Unsupported BindFlag");
+        LOG_ERROR("Buffer", "render", "Unsupported BindFlag");
         break;
     }
 }
@@ -226,13 +226,13 @@ HRESULT Buffer::createBuffer(Device& device,
     D3D11_BUFFER_DESC& desc,
     D3D11_SUBRESOURCE_DATA* initData) {
     if (!device.m_device) {
-        ERROR("Buffer", "createBuffer", "Device is nullptr");
+        LOG_ERROR("Buffer", "createBuffer", "Device is nullptr");
         return E_POINTER;
     }
 
     HRESULT hr = device.CreateBuffer(&desc, initData, &m_buffer);
     if (FAILED(hr)) {
-        ERROR("Buffer", "createBuffer", "Failed to create buffer");
+        LOG_ERROR("Buffer", "createBuffer", "Failed to create buffer");
         return hr;
     }
     return S_OK;

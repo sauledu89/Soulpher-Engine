@@ -4,7 +4,7 @@
 
 HRESULT EditorViewportPass::init(Device& device, unsigned int width, unsigned int height) {
     if (!device.m_device) {
-        ERROR("EditorViewportPass", "init", "Device is null.");
+        LOG_ERROR("EditorViewportPass", "init", "Device is null.");
         return E_POINTER;
     }
     m_width  = width  > 0 ? width  : 1;
@@ -14,19 +14,19 @@ HRESULT EditorViewportPass::init(Device& device, unsigned int width, unsigned in
         DXGI_FORMAT_R8G8B8A8_UNORM,
         D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
     if (FAILED(hr)) {
-        ERROR("EditorViewportPass", "init", "Failed to create color texture.");
+        LOG_ERROR("EditorViewportPass", "init", "Failed to create color texture.");
         return hr;
     }
 
     hr = m_colorSRV.init(device, m_colorTexture, DXGI_FORMAT_R8G8B8A8_UNORM);
     if (FAILED(hr)) {
-        ERROR("EditorViewportPass", "init", "Failed to create color SRV.");
+        LOG_ERROR("EditorViewportPass", "init", "Failed to create color SRV.");
         return hr;
     }
 
     hr = m_rtv.init(device, m_colorTexture, D3D11_RTV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R8G8B8A8_UNORM);
     if (FAILED(hr)) {
-        ERROR("EditorViewportPass", "init", "Failed to create RTV.");
+        LOG_ERROR("EditorViewportPass", "init", "Failed to create RTV.");
         return hr;
     }
 
@@ -34,13 +34,13 @@ HRESULT EditorViewportPass::init(Device& device, unsigned int width, unsigned in
         DXGI_FORMAT_D24_UNORM_S8_UINT,
         D3D11_BIND_DEPTH_STENCIL);
     if (FAILED(hr)) {
-        ERROR("EditorViewportPass", "init", "Failed to create depth texture.");
+        LOG_ERROR("EditorViewportPass", "init", "Failed to create depth texture.");
         return hr;
     }
 
     hr = m_dsv.init(device, m_depthTexture, DXGI_FORMAT_D24_UNORM_S8_UINT);
     if (FAILED(hr)) {
-        ERROR("EditorViewportPass", "init", "Failed to create DSV.");
+        LOG_ERROR("EditorViewportPass", "init", "Failed to create DSV.");
         return hr;
     }
 

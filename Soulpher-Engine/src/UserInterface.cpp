@@ -34,6 +34,7 @@
 #include "Texture.h"
 #include "MeshComponent.h"
 #include "ECS\\Actor.h"
+#include "ECS\\LightComponent.h"
 
     UserInterface::UserInterface() {}
 UserInterface::~UserInterface() {}
@@ -69,8 +70,8 @@ void UserInterface::init(void* window, ID3D11Device* device, ID3D11DeviceContext
         }
     }
 
-    ImGui::StyleColorsDark();
-    CyberpunkStyle();
+    ImGui::StyleColorsLight();
+    NESStyle();
 
     ImGui_ImplWin32_Init(window);
     ImGui_ImplDX11_Init(device, deviceContext);
@@ -119,11 +120,35 @@ void UserInterface::destroy()
     m_imguiInitialized = false;
 }
 
+/**
+ * @copydoc UserInterface::vec3Control
+ * @details El estado del checkbox de vínculo se guarda con `ImGui::GetStateStorage()`
+ * en vez de con un miembro de la clase.
+ *
+ * @note [GameDev] `ImGuiStorage` es el mecanismo que usa ImGui internamente para que un
+ * widget "recuerde" algo entre frames sin que el código que lo llama tenga que declarar
+ * una variable `static`/miembro dedicada — el propio `ImGui::PushID(label)` de arriba ya
+ * genera un espacio de IDs único por etiqueta, así que `GetID("##LinkXYZ")` produce un
+ * ID distinto para "Position", "Rotation" y "Scale" automáticamente, y cada uno guarda
+ * su propio booleano sin colisionar. Es el mismo patrón interno que usa ImGui para
+ * recordar, por ejemplo, si un `CollapsingHeader` está abierto o cerrado. La alternativa
+ * — un `static bool linked` normal dentro de la función — NO serviría aquí: al ser
+ * `static`, ese booleano se compartiría entre las 3 llamadas (Position/Rotation/Scale)
+ * del mismo frame, así que activar el vínculo en Position lo activaría también en
+ * Rotation y Scale.
+ */
 void UserInterface::vec3Control(const std::string& label, float* values, float resetValue, float columnWidth) {
     ImGuiIO& io = ImGui::GetIO();
     auto boldFont = io.Fonts->Fonts[0];
 
     ImGui::PushID(label.c_str());
+
+    // Estado del vínculo X/Y/Z, guardado en el storage de ImGui bajo el ID ya escopeado por
+    // PushID(label) de arriba — así "Position", "Rotation" y "Scale" tienen cada uno su propio
+    // toggle independiente sin necesitar un arreglo/mapa aparte en la clase.
+    ImGuiStorage* storage = ImGui::GetStateStorage();
+    ImGuiID linkStorageId = ImGui::GetID("##LinkXYZ");
+    bool linked = storage->GetBool(linkStorageId, false);
 
     ImGui::Columns(2);
     ImGui::SetColumnWidth(0, columnWidth);
@@ -136,16 +161,18 @@ void UserInterface::vec3Control(const std::string& label, float* values, float r
     float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
     ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
 
+    bool changedX = false, changedY = false, changedZ = false;
+
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
     ImGui::PushFont(boldFont);
-    if (ImGui::Button("X", buttonSize)) values[0] = resetValue;
+    if (ImGui::Button("X", buttonSize)) { values[0] = resetValue; changedX = true; }
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##X", &values[0], 0.1f, 0.0f, 0.0f, "%.2f");
+    if (ImGui::DragFloat("##X", &values[0], 0.1f, 0.0f, 0.0f, "%.2f")) changedX = true;
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -153,12 +180,12 @@ void UserInterface::vec3Control(const std::string& label, float* values, float r
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
     ImGui::PushFont(boldFont);
-    if (ImGui::Button("Y", buttonSize)) values[1] = resetValue;
+    if (ImGui::Button("Y", buttonSize)) { values[1] = resetValue; changedY = true; }
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##Y", &values[1], 0.1f, 0.0f, 0.0f, "%.2f");
+    if (ImGui::DragFloat("##Y", &values[1], 0.1f, 0.0f, 0.0f, "%.2f")) changedY = true;
     ImGui::PopItemWidth();
     ImGui::SameLine();
 
@@ -166,15 +193,32 @@ void UserInterface::vec3Control(const std::string& label, float* values, float r
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
     ImGui::PushFont(boldFont);
-    if (ImGui::Button("Z", buttonSize)) values[2] = resetValue;
+    if (ImGui::Button("Z", buttonSize)) { values[2] = resetValue; changedZ = true; }
     ImGui::PopFont();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    ImGui::DragFloat("##Z", &values[2], 0.1f, 0.0f, 0.0f, "%.2f");
+    if (ImGui::DragFloat("##Z", &values[2], 0.1f, 0.0f, 0.0f, "%.2f")) changedZ = true;
     ImGui::PopItemWidth();
 
     ImGui::PopStyleVar();
+
+    // Vínculo X/Y/Z: checkbox tipo "cadena" (sin texto, para caber en el panel angosto del
+    // Inspector) — cuando está activo, el eje que el usuario acaba de tocar se copia a los
+    // otros dos, así los tres quedan sincronizados al mismo valor.
+    ImGui::SameLine();
+    ImGui::Checkbox("##LinkXYZ", &linked);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Vincular X/Y/Z: al editar un eje, los otros dos se igualan");
+    }
+    storage->SetBool(linkStorageId, linked);
+
+    if (linked) {
+        if (changedX) { values[1] = values[0]; values[2] = values[0]; }
+        else if (changedY) { values[0] = values[1]; values[2] = values[1]; }
+        else if (changedZ) { values[0] = values[2]; values[1] = values[2]; }
+    }
+
     ImGui::Columns(1);
 
     ImGui::PopID();
@@ -214,6 +258,14 @@ void UserInterface::Renderer(Window window, ID3D11ShaderResourceView* renderText
     ImGui::End();
 }
 
+/**
+ * @copydoc UserInterface::inspectorGeneral
+ * @details Además del nombre y el `Transform` (vía `inspectorContainer`), muestra una
+ * sección "Light" condicional si `actor` tiene un `LightComponent` — editando sus campos
+ * (tipo/color/intensidad/range/spotAngle) directamente sobre la referencia que devuelve
+ * `getLightData()`, sin copia intermedia: el próximo `LightComponent::resolve()` (llamado
+ * por `BaseApp::render()` este mismo frame) ya ve el valor actualizado.
+ */
 void UserInterface::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
     ImGui::Begin("Inspector");
 
@@ -250,6 +302,38 @@ void UserInterface::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
     if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
         inspectorContainer(actor);
     }
+
+    // Seccion Light — solo si el actor tiene un LightComponent (Light Actor).
+    EU::TSharedPointer<LightComponent> lightComp = actor->getComponent<LightComponent>();
+    if (!lightComp.isNull()) {
+        ImGui::Separator();
+        if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+            LightData& light = lightComp->getLightData();
+
+            const char* typeNames[] = { "Directional", "Point", "Spot" };
+            int typeIndex = (int)light.type;
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvailWidth() * 0.6f);
+            if (ImGui::Combo("Type", &typeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
+                light.type = (LightType)typeIndex;
+            }
+
+            ImGui::ColorEdit3("Color", &light.color.x,
+                ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB);
+
+            ImGui::DragFloat("Intensity", &light.intensity, 0.05f, 0.0f, 50.0f, "%.2f");
+
+            if (light.type == LightType::Point || light.type == LightType::Spot) {
+                ImGui::DragFloat("Range", &light.range, 0.1f, 0.1f, 200.0f, "%.2f");
+            }
+            if (light.type == LightType::Spot) {
+                float angleDeg = XMConvertToDegrees(light.spotAngle);
+                if (ImGui::DragFloat("Spot Angle", &angleDeg, 0.5f, 1.0f, 89.0f, "%.1f deg")) {
+                    light.spotAngle = XMConvertToRadians(angleDeg);
+                }
+            }
+        }
+    }
+
     ImGui::End();
 }
 
@@ -260,8 +344,52 @@ void UserInterface::inspectorContainer(EU::TSharedPointer<Actor> actor) {
 }
 
 void UserInterface::output() {
-    bool Stage = true;
-    ImGui::Begin("Output", &Stage);
+    static bool showMessage = true;
+    static bool showWarning = true;
+    static bool showError   = true;
+
+    ImGui::Begin("Console");
+
+    if (ImGui::Button("Clear")) {
+        LogManager::instance().clear();
+    }
+    ImGui::SameLine();
+    ImGui::Checkbox("Message", &showMessage);
+    ImGui::SameLine();
+    ImGui::Checkbox("Warning", &showWarning);
+    ImGui::SameLine();
+    ImGui::Checkbox("Error", &showError);
+    ImGui::Separator();
+
+    ImGui::BeginChild("ConsoleScroll", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
+    for (const LogEntry& entry : LogManager::instance().entries()) {
+        if (entry.level == LogLevel::Message && !showMessage) continue;
+        if (entry.level == LogLevel::Warning && !showWarning) continue;
+        if (entry.level == LogLevel::Error   && !showError)   continue;
+
+        ImVec4 color;
+        switch (entry.level) {
+            case LogLevel::Warning: color = ImVec4(1.00f, 0.80f, 0.20f, 1.0f); break;
+            case LogLevel::Error:   color = ImVec4(1.00f, 0.35f, 0.35f, 1.0f); break;
+            default:                color = ImVec4(0.165f, 0.165f, 0.165f, 1.0f); break; // #2A2A2A — legible sobre fondo gris claro
+        }
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::TextUnformatted(entry.text.c_str());
+        ImGui::PopStyleColor();
+    }
+    // Auto-scroll: solo si el usuario ya estaba al final (no lo forzamos si scrolleo hacia arriba a leer algo).
+    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+        ImGui::SetScrollHereY(1.0f);
+    ImGui::EndChild();
+
+    ImGui::End();
+}
+
+void UserInterface::statsPanel(float fps, float frameTimeMs, unsigned int drawCalls) {
+    ImGui::Begin("Stats");
+    ImGui::Text("FPS: %.1f", fps);
+    ImGui::Text("Frame time: %.2f ms", frameTimeMs);
+    ImGui::Text("Draw calls: %u", drawCalls);
     ImGui::End();
 }
 
@@ -606,6 +734,152 @@ void UserInterface::CyberpunkStyle() {
     }
 }
 
+/**
+ * @copydoc UserInterface::NESStyle
+ * @details Estructura idéntica a `CyberpunkStyle()`: variables locales con la paleta
+ * base (fondos, acento primario, acento secundario, bordes), seguidas de las métricas
+ * de la ventana (rounding/padding/border) y luego la asignación explícita de CADA
+ * `ImGuiCol_*` relevante — sin dejar ningún color "heredado" del tema base que pudiera
+ * quedar mal sobre el fondo claro.
+ *
+ * @note [GameDev] Diseñar un tema de color no es solo "elegir bonitos colores": hay que
+ * garantizar CONTRASTE consistente en cada combinación texto/fondo y estado/estado
+ * (reposo vs. hover vs. activo) para que la UI siga siendo legible y predecible. Aquí
+ * el criterio fue: rojo Nintendo para el acento "de marca" (headers activos, checkmarks,
+ * botones primarios), naranja Zapper para estados de "atención del usuario" (hover,
+ * resaltados, separadores), y texto casi negro sobre el gris claro de fondo — la misma
+ * lógica de "color primario / color de acento / color de texto con contraste mínimo
+ * garantizado" que usan los design systems de UI profesionales (Material Design,
+ * Fluent UI de Microsoft, etc.), aplicada aquí a mano en vez de con una herramienta.
+ */
+void UserInterface::NESStyle() {
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4* c = style.Colors;
+
+    // ── Fondos: gris claro tipo plástico de la NES original ───────────────────
+    const ImVec4 bg0 = { 0.753f, 0.753f, 0.753f, 1.00f }; // #C0C0C0 fondo principal
+    const ImVec4 bg1 = { 0.659f, 0.659f, 0.659f, 1.00f }; // #A8A8A8 popups / barras de título
+    const ImVec4 bg2 = { 0.847f, 0.847f, 0.847f, 1.00f }; // #D8D8D8 frames/widgets (look "inset")
+
+    // ── Rojo Nintendo (acento primario) ────────────────────────────────────────
+    const ImVec4 red     = { 0.902f, 0.000f, 0.071f, 1.00f }; // #E60012
+    const ImVec4 redHov  = { 1.000f, 0.200f, 0.267f, 1.00f }; // #FF3344
+    const ImVec4 redAct  = { 0.702f, 0.000f, 0.055f, 1.00f }; // #B3000E (más oscuro al presionar)
+    const ImVec4 redFill = { 0.902f, 0.000f, 0.071f, 0.25f };
+
+    // ── Naranja Zapper (headers/títulos/separadores + botones secundarios/highlights) ──
+    const ImVec4 orange       = { 0.941f, 0.439f, 0.188f, 1.00f }; // #F07030
+    const ImVec4 orangeHov    = { 1.000f, 0.549f, 0.314f, 1.00f }; // #FF8C50
+    const ImVec4 orangeAct    = { 0.780f, 0.320f, 0.100f, 1.00f }; // #C7521A (más oscuro al presionar)
+    const ImVec4 orangeFill   = { 0.941f, 0.439f, 0.188f, 0.30f };
+    const ImVec4 orangeHeader = { 0.941f, 0.439f, 0.188f, 0.55f }; // headers en reposo: naranja semi-sólido
+
+    // ── Bordes: bisel oscuro tipo carcasa de consola ───────────────────────────
+    const ImVec4 edge = { 0.376f, 0.376f, 0.376f, 1.00f }; // #606060
+
+    // ── Métricas: esquinas casi rectas, look de cartucho ──────────────────────
+    style.Alpha             = 1.0f;
+    style.WindowRounding    = 2.0f;
+    style.FrameRounding     = 1.0f;
+    style.GrabRounding      = 1.0f;
+    style.ScrollbarRounding = 1.0f;
+    style.TabRounding       = 1.0f;
+    style.PopupRounding     = 1.0f;
+    style.WindowBorderSize  = 1.0f;
+    style.FrameBorderSize   = 1.0f;
+    style.PopupBorderSize   = 1.0f;
+    style.WindowPadding     = { 8.0f, 6.0f };
+    style.FramePadding      = { 6.0f, 4.0f };
+    style.ItemSpacing       = { 6.0f, 4.0f };
+    style.ScrollbarSize     = 12.0f;
+    style.GrabMinSize       = 10.0f;
+
+    // ── Texto: gris oscuro/negro para contraste sobre el fondo claro ──────────
+    c[ImGuiCol_Text]         = { 0.10f, 0.10f, 0.10f, 1.00f }; // #1A1A1A
+    c[ImGuiCol_TextDisabled] = { 0.44f, 0.44f, 0.44f, 1.00f }; // #707070
+
+    // ── Fondos de ventanas ────────────────────────────────────────────────────
+    c[ImGuiCol_WindowBg] = bg0;
+    c[ImGuiCol_ChildBg]  = { 0.00f, 0.00f, 0.00f, 0.00f };
+    c[ImGuiCol_PopupBg]  = bg1;
+
+    // ── Bordes ────────────────────────────────────────────────────────────────
+    c[ImGuiCol_Border]       = edge;
+    c[ImGuiCol_BorderShadow] = { 0.00f, 0.00f, 0.00f, 0.00f };
+
+    // ── Frames (inputs, combos, sliders) ─────────────────────────────────────
+    c[ImGuiCol_FrameBg]        = bg2;
+    c[ImGuiCol_FrameBgHovered] = orangeFill;
+    c[ImGuiCol_FrameBgActive]  = redFill;
+
+    // ── Barras de título ──────────────────────────────────────────────────────
+    c[ImGuiCol_TitleBg]          = bg1;
+    c[ImGuiCol_TitleBgActive]    = orange; // naranja Zapper: ventana activa/enfocada
+    c[ImGuiCol_TitleBgCollapsed] = bg0;
+    c[ImGuiCol_MenuBarBg]        = bg1;
+
+    // ── Scrollbar ─────────────────────────────────────────────────────────────
+    c[ImGuiCol_ScrollbarBg]          = bg1;
+    c[ImGuiCol_ScrollbarGrab]        = { 0.56f, 0.56f, 0.56f, 1.00f };
+    c[ImGuiCol_ScrollbarGrabHovered] = orange;
+    c[ImGuiCol_ScrollbarGrabActive]  = red;
+
+    // ── Controles interactivos ────────────────────────────────────────────────
+    c[ImGuiCol_CheckMark]        = red;
+    c[ImGuiCol_SliderGrab]       = red;
+    c[ImGuiCol_SliderGrabActive] = orange;
+
+    // ── Botones: rojo primario, naranja al pasar el mouse (highlight) ────────
+    c[ImGuiCol_Button]        = red;
+    c[ImGuiCol_ButtonHovered] = orangeHov;
+    c[ImGuiCol_ButtonActive]  = redAct;
+
+    // ── Headers (CollapsingHeader, TreeNode, Selectable) — naranja Zapper ────
+    c[ImGuiCol_Header]        = orangeHeader;
+    c[ImGuiCol_HeaderHovered] = orangeHov;
+    c[ImGuiCol_HeaderActive]  = orange;
+
+    // ── Separadores de sección — naranja Zapper ──────────────────────────────
+    c[ImGuiCol_Separator]        = orange;
+    c[ImGuiCol_SeparatorHovered] = orangeHov;
+    c[ImGuiCol_SeparatorActive]  = orangeAct;
+
+    // ── Resize grip ───────────────────────────────────────────────────────────
+    c[ImGuiCol_ResizeGrip]        = orangeFill;
+    c[ImGuiCol_ResizeGripHovered] = orange;
+    c[ImGuiCol_ResizeGripActive]  = red;
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+    c[ImGuiCol_Tab]                = bg2;
+    c[ImGuiCol_TabHovered]         = orangeFill;
+    c[ImGuiCol_TabActive]          = redFill;
+    c[ImGuiCol_TabUnfocused]       = bg1;
+    c[ImGuiCol_TabUnfocusedActive] = bg2;
+
+    // ── Docking ───────────────────────────────────────────────────────────────
+    c[ImGuiCol_DockingPreview] = orangeFill;
+    c[ImGuiCol_DockingEmptyBg] = bg0;
+
+    // ── Plots ─────────────────────────────────────────────────────────────────
+    c[ImGuiCol_PlotLines]            = red;
+    c[ImGuiCol_PlotLinesHovered]     = orange;
+    c[ImGuiCol_PlotHistogram]        = red;
+    c[ImGuiCol_PlotHistogramHovered] = orange;
+
+    // ── Selección / nav ───────────────────────────────────────────────────────
+    c[ImGuiCol_TextSelectedBg]        = orangeFill;
+    c[ImGuiCol_DragDropTarget]        = orange;
+    c[ImGuiCol_NavHighlight]          = red;
+    c[ImGuiCol_NavWindowingHighlight] = red;
+    c[ImGuiCol_NavWindowingDimBg]     = { 0.20f, 0.20f, 0.20f, 0.40f };
+    c[ImGuiCol_ModalWindowDimBg]      = { 0.20f, 0.20f, 0.20f, 0.50f };
+
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        style.WindowRounding = 0.0f;
+        c[ImGuiCol_WindowBg].w = 1.0f;
+    }
+}
+
 void UserInterface::visualStudioStyle() {
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
@@ -770,52 +1044,13 @@ void UserInterface::RenderFullScreenTransparentWindow() {
     ImGui::End();
 }
 
-void UserInterface::lightPanel(float* lightDir, float* lightColor, float& shadowBias) {
+void UserInterface::lightPanel(float& shadowBias, bool& viewShadowMap) {
     ImGui::Begin("Lighting");
 
-    // --- Luz direccional ---
-    if (ImGui::CollapsingHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Text("Direction");
-        ImGui::SameLine();
-        ImGui::TextDisabled("(se normaliza)");
-
-        bool changed = ImGui::DragFloat3("##LightDir", lightDir, 0.01f, -1.0f, 1.0f, "%.3f");
-        if (changed) {
-            // Mantener normalizado para que la iluminación no cambie de intensidad
-            float len = sqrtf(lightDir[0]*lightDir[0] + lightDir[1]*lightDir[1] + lightDir[2]*lightDir[2]);
-            if (len > 1e-5f) {
-                lightDir[0] /= len;
-                lightDir[1] /= len;
-                lightDir[2] /= len;
-            }
-        }
-
-        // Preset buttons para dirección de luz
-        ImGui::Text("Presets:");
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Cenital"))  { lightDir[0]=0.0f; lightDir[1]=-1.0f; lightDir[2]=0.0f; }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Diagonal")) { lightDir[0]=0.3f; lightDir[1]=-1.0f; lightDir[2]=0.5f;
-            float l = sqrtf(0.09f+1.0f+0.25f); lightDir[0]/=l; lightDir[1]/=l; lightDir[2]/=l; }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Lateral"))  { lightDir[0]=1.0f; lightDir[1]=-0.3f; lightDir[2]=0.0f;
-            float l = sqrtf(1.0f+0.09f); lightDir[0]/=l; lightDir[1]/=l; lightDir[2]/=l; }
-
-        ImGui::Separator();
-
-        ImGui::Text("Color");
-        ImGui::ColorEdit3("##LightColor", lightColor,
-            ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB);
-    }
-
-    // --- UI ---
-    if (ImGui::CollapsingHeader("Interface")) {
-        float scale = ImGui::GetIO().FontGlobalScale;
-        if (ImGui::SliderFloat("Font Scale", &scale, 0.5f, 2.5f, "%.1fx"))
-            ImGui::GetIO().FontGlobalScale = scale;
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset##fs")) ImGui::GetIO().FontGlobalScale = 1.0f;
-    }
+    // La direccion/color/intensidad de las luces ahora se editan por Light Actor (seleccionar
+    // el actor "Sun" u otro Light Actor en Hierarchy -> seccion "Light" del Inspector) en vez
+    // de un unico slider global aqui.
+    ImGui::TextDisabled("Direccion/color/intensidad: selecciona un Light Actor en Hierarchy.");
 
     // --- Sombras ---
     if (ImGui::CollapsingHeader("Shadow Map", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -826,13 +1061,42 @@ void UserInterface::lightPanel(float* lightDir, float* lightColor, float& shadow
 
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset")) shadowBias = 0.003f;
+
+        ImGui::Checkbox("Ver Shadow Map", &viewShadowMap);
     }
 
     ImGui::End();
 }
 
+void UserInterface::interfacePanel() {
+    ImGui::Begin("Interface");
+
+    float scale = ImGui::GetIO().FontGlobalScale;
+    if (ImGui::SliderFloat("Font Scale", &scale, 0.5f, 2.5f, "%.1fx"))
+        ImGui::GetIO().FontGlobalScale = scale;
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Reset##fs")) ImGui::GetIO().FontGlobalScale = 1.0f;
+
+    ImGui::End();
+}
+
+/**
+ * @copydoc UserInterface::outliner
+ */
 void UserInterface::outliner(const std::vector<EU::TSharedPointer<Actor>>& actors) {
     ImGui::Begin("Hierarchy");
+
+    // "+ Add Light": solo marca la intención (requestedLightType) — no construye ningún
+    // Actor aquí (ver nota de "comando diferido" en el @file de UserInterface.h).
+    if (ImGui::Button("+ Add Light")) {
+        ImGui::OpenPopup("AddLightPopup");
+    }
+    if (ImGui::BeginPopup("AddLightPopup")) {
+        if (ImGui::MenuItem("Directional Light")) requestedLightType = (int)LightType::Directional;
+        if (ImGui::MenuItem("Point Light"))        requestedLightType = (int)LightType::Point;
+        if (ImGui::MenuItem("Spot Light"))         requestedLightType = (int)LightType::Spot;
+        ImGui::EndPopup();
+    }
 
     static ImGuiTextFilter filter;
     filter.Draw("##Search", ImGui::GetContentRegionAvailWidth());
@@ -853,6 +1117,14 @@ void UserInterface::outliner(const std::vector<EU::TSharedPointer<Actor>>& actor
 
         if (ImGui::Selectable(label.c_str(), selected)) {
             selectedActorIndex = i;
+        }
+
+        // Menú contextual (clic derecho): igual que "+ Add Light", solo marca el índice —
+        // BaseApp::update() hace el duplicado/borrado real al inicio del siguiente frame.
+        if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem("Duplicate")) requestedDuplicateIndex = i;
+            if (ImGui::MenuItem("Delete"))    requestedDeleteIndex = i;
+            ImGui::EndPopup();
         }
 
         // Tooltip con info rápida

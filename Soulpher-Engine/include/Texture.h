@@ -83,6 +83,17 @@ public:
     HRESULT init(Device& device, Texture& textureRef, DXGI_FORMAT format);
 
     /**
+     * @brief Genera en memoria una textura checkerboard magenta/negro, sin depender
+     * de ningún archivo. Se usa como fallback visual universal cuando falla la carga
+     * de una textura real (archivo faltante, corrupto, etc.).
+     * @param device Dispositivo Direct3D usado para la creación.
+     * @param size Ancho/alto de la textura en píxeles (cuadrada). Por defecto 64.
+     * @param checkSize Tamaño de cada cuadro del patrón en píxeles. Por defecto 8.
+     * @return HRESULT que indica éxito o error de la operación.
+     */
+    HRESULT initCheckerboard(Device device, unsigned int size = 64, unsigned int checkSize = 8);
+
+    /**
      * @brief Adjunta un recurso nativo de textura existente.
      * @param tex Puntero a la textura ID3D11Texture2D.
      *

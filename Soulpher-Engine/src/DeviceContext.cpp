@@ -1,19 +1,19 @@
 /**
  * @file DeviceContext.cpp
- * @brief Implementación del contexto de dispositivo D3D11 y operaciones de pipeline.
+ * @brief Implementaciï¿½n del contexto de dispositivo D3D11 y operaciones de pipeline.
  *
  * @details
- * Esta clase actúa como interfaz entre el CPU y la GPU para configurar y ejecutar
+ * Esta clase actï¿½a como interfaz entre el CPU y la GPU para configurar y ejecutar
  * las etapas del pipeline de renderizado en DirectX 11.
  *
  * El Device Context es responsable de:
  * - Enviar comandos de dibujo (`Draw`, `DrawIndexed`).
- * - Configurar shaders, buffers, texturas y estados gráficos.
+ * - Configurar shaders, buffers, texturas y estados grï¿½ficos.
  * - Limpiar y preparar los render targets.
  *
  * @note
- * Comprender cómo usar correctamente un Device Context es clave para renderizar
- * de forma eficiente en un motor gráfico.
+ * Comprender cï¿½mo usar correctamente un Device Context es clave para renderizar
+ * de forma eficiente en un motor grï¿½fico.
  */
 
 #include "DeviceContext.h"
@@ -21,7 +21,7 @@
  /**
   * @brief Libera el contexto de dispositivo.
   *
-  * @note Se debe llamar antes de cerrar la aplicación para evitar fugas de memoria.
+  * @note Se debe llamar antes de cerrar la aplicaciï¿½n para evitar fugas de memoria.
   */
 void DeviceContext::destroy() {
     SAFE_RELEASE(m_deviceContext);
@@ -29,15 +29,15 @@ void DeviceContext::destroy() {
 
 /**
  * @brief Configura los viewports para el rasterizador.
- * @param NumViewports Número de viewports a establecer.
+ * @param NumViewports Nï¿½mero de viewports a establecer.
  * @param pViewports Arreglo con las definiciones de cada viewport.
  *
- * @note El viewport define la región de la pantalla donde se dibuja.
+ * @note El viewport define la regiï¿½n de la pantalla donde se dibuja.
  */
 void DeviceContext::RSSetViewports(unsigned int NumViewports,
     const D3D11_VIEWPORT* pViewports) {
     if (!pViewports) {
-        ERROR("DeviceContext", "RSSetViewports", "pViewports is nullptr");
+        LOG_ERROR("DeviceContext", "RSSetViewports", "pViewports is nullptr");
         return;
     }
     m_deviceContext->RSSetViewports(NumViewports, pViewports);
@@ -45,17 +45,17 @@ void DeviceContext::RSSetViewports(unsigned int NumViewports,
 
 /**
  * @brief Asigna recursos de textura a la etapa de Pixel Shader.
- * @param StartSlot Índice de slot inicial.
- * @param NumViews Número de vistas a asignar.
+ * @param StartSlot ï¿½ndice de slot inicial.
+ * @param NumViews Nï¿½mero de vistas a asignar.
  * @param ppShaderResourceViews Arreglo de vistas de recursos.
  *
- * @note Aquí se conectan las texturas para que el shader pueda muestrearlas.
+ * @note Aquï¿½ se conectan las texturas para que el shader pueda muestrearlas.
  */
 void DeviceContext::PSSetShaderResources(unsigned int StartSlot,
     unsigned int NumViews,
     ID3D11ShaderResourceView* const* ppShaderResourceViews) {
     if (!ppShaderResourceViews) {
-        ERROR("DeviceContext", "PSSetShaderResources", "ppShaderResourceViews is nullptr");
+        LOG_ERROR("DeviceContext", "PSSetShaderResources", "ppShaderResourceViews is nullptr");
         return;
     }
     m_deviceContext->PSSetShaderResources(StartSlot, NumViews, ppShaderResourceViews);
@@ -63,13 +63,13 @@ void DeviceContext::PSSetShaderResources(unsigned int StartSlot,
 
 /**
  * @brief Define el Input Layout para el ensamblador de entrada.
- * @param pInputLayout Layout que describe el formato de los vértices.
+ * @param pInputLayout Layout que describe el formato de los vï¿½rtices.
  *
- * @note Debe coincidir con la estructura de vértices usada en el Vertex Shader.
+ * @note Debe coincidir con la estructura de vï¿½rtices usada en el Vertex Shader.
  */
 void DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
     if (!pInputLayout) {
-        ERROR("DeviceContext", "IASetInputLayout", "pInputLayout is nullptr");
+        LOG_ERROR("DeviceContext", "IASetInputLayout", "pInputLayout is nullptr");
         return;
     }
     m_deviceContext->IASetInputLayout(pInputLayout);
@@ -77,15 +77,15 @@ void DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
 
 /**
  * @brief Asigna el Vertex Shader activo.
- * @param pVertexShader Shader de vértices.
+ * @param pVertexShader Shader de vï¿½rtices.
  * @param ppClassInstances Instancias de clases para shaders (opcional).
- * @param NumClassInstances Número de instancias.
+ * @param NumClassInstances Nï¿½mero de instancias.
  */
 void DeviceContext::VSSetShader(ID3D11VertexShader* pVertexShader,
     ID3D11ClassInstance* const* ppClassInstances,
     unsigned int NumClassInstances) {
     if (!pVertexShader) {
-        ERROR("DeviceContext", "VSSetShader", "pVertexShader is nullptr");
+        LOG_ERROR("DeviceContext", "VSSetShader", "pVertexShader is nullptr");
         return;
     }
     m_deviceContext->VSSetShader(pVertexShader, ppClassInstances, NumClassInstances);
@@ -98,7 +98,7 @@ void DeviceContext::PSSetShader(ID3D11PixelShader* pPixelShader,
     ID3D11ClassInstance* const* ppClassInstances,
     unsigned int NumClassInstances) {
     if (!pPixelShader) {
-        ERROR("DeviceContext", "PSSetShader", "pPixelShader is nullptr");
+        LOG_ERROR("DeviceContext", "PSSetShader", "pPixelShader is nullptr");
         return;
     }
     m_deviceContext->PSSetShader(pPixelShader, ppClassInstances, NumClassInstances);
@@ -107,11 +107,11 @@ void DeviceContext::PSSetShader(ID3D11PixelShader* pPixelShader,
 /**
  * @brief Copia datos desde CPU a GPU en un recurso existente.
  * @param pDstResource Recurso destino en GPU.
- * @param DstSubresource Índice de subrecurso.
- * @param pDstBox Caja opcional para actualización parcial.
+ * @param DstSubresource ï¿½ndice de subrecurso.
+ * @param pDstBox Caja opcional para actualizaciï¿½n parcial.
  * @param pSrcData Puntero a los datos fuente en CPU.
- * @param SrcRowPitch Número de bytes por fila.
- * @param SrcDepthPitch Número de bytes por capa.
+ * @param SrcRowPitch Nï¿½mero de bytes por fila.
+ * @param SrcDepthPitch Nï¿½mero de bytes por capa.
  */
 void DeviceContext::UpdateSubresource(ID3D11Resource* pDstResource,
     unsigned int DstSubresource,
@@ -120,7 +120,7 @@ void DeviceContext::UpdateSubresource(ID3D11Resource* pDstResource,
     unsigned int SrcRowPitch,
     unsigned int SrcDepthPitch) {
     if (!pDstResource || !pSrcData) {
-        ERROR("DeviceContext", "UpdateSubresource",
+        LOG_ERROR("DeviceContext", "UpdateSubresource",
             "Invalid arguments: pDstResource or pSrcData is nullptr");
         return;
     }
@@ -128,7 +128,7 @@ void DeviceContext::UpdateSubresource(ID3D11Resource* pDstResource,
 }
 
 /**
- * @brief Asigna buffers de vértices al Input Assembler.
+ * @brief Asigna buffers de vï¿½rtices al Input Assembler.
  */
 void DeviceContext::IASetVertexBuffers(unsigned int StartSlot,
     unsigned int NumBuffers,
@@ -136,7 +136,7 @@ void DeviceContext::IASetVertexBuffers(unsigned int StartSlot,
     const unsigned int* pStrides,
     const unsigned int* pOffsets) {
     if (!ppVertexBuffers || !pStrides || !pOffsets) {
-        ERROR("DeviceContext", "IASetVertexBuffers",
+        LOG_ERROR("DeviceContext", "IASetVertexBuffers",
             "Invalid arguments: ppVertexBuffers, pStrides, or pOffsets is nullptr");
         return;
     }
@@ -144,13 +144,13 @@ void DeviceContext::IASetVertexBuffers(unsigned int StartSlot,
 }
 
 /**
- * @brief Asigna el buffer de índices para dibujo indexado.
+ * @brief Asigna el buffer de ï¿½ndices para dibujo indexado.
  */
 void DeviceContext::IASetIndexBuffer(ID3D11Buffer* pIndexBuffer,
     DXGI_FORMAT Format,
     unsigned int Offset) {
     if (!pIndexBuffer) {
-        ERROR("DeviceContext", "IASetIndexBuffer", "pIndexBuffer is nullptr");
+        LOG_ERROR("DeviceContext", "IASetIndexBuffer", "pIndexBuffer is nullptr");
         return;
     }
     m_deviceContext->IASetIndexBuffer(pIndexBuffer, Format, Offset);
@@ -163,7 +163,7 @@ void DeviceContext::PSSetSamplers(unsigned int StartSlot,
     unsigned int NumSamplers,
     ID3D11SamplerState* const* ppSamplers) {
     if (!ppSamplers) {
-        ERROR("DeviceContext", "PSSetSamplers", "ppSamplers is nullptr");
+        LOG_ERROR("DeviceContext", "PSSetSamplers", "ppSamplers is nullptr");
         return;
     }
     m_deviceContext->PSSetSamplers(StartSlot, NumSamplers, ppSamplers);
@@ -174,7 +174,7 @@ void DeviceContext::PSSetSamplers(unsigned int StartSlot,
  */
 void DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
     if (!pRasterizerState) {
-        ERROR("DeviceContext", "RSSetState", "pRasterizerState is nullptr");
+        LOG_ERROR("DeviceContext", "RSSetState", "pRasterizerState is nullptr");
         return;
     }
     m_deviceContext->RSSetState(pRasterizerState);
@@ -187,7 +187,7 @@ void DeviceContext::OMSetBlendState(ID3D11BlendState* pBlendState,
     const float BlendFactor[4],
     unsigned int SampleMask) {
     if (!pBlendState) {
-        ERROR("DeviceContext", "OMSetBlendState", "pBlendState is nullptr");
+        LOG_ERROR("DeviceContext", "OMSetBlendState", "pBlendState is nullptr");
         return;
     }
     m_deviceContext->OMSetBlendState(pBlendState, BlendFactor, SampleMask);
@@ -200,12 +200,12 @@ void DeviceContext::OMSetRenderTargets(unsigned int NumViews,
     ID3D11RenderTargetView* const* ppRenderTargetViews,
     ID3D11DepthStencilView* pDepthStencilView) {
     if (!ppRenderTargetViews && !pDepthStencilView) {
-        ERROR("DeviceContext", "OMSetRenderTargets",
+        LOG_ERROR("DeviceContext", "OMSetRenderTargets",
             "Both ppRenderTargetViews and pDepthStencilView are nullptr");
         return;
     }
     if (NumViews > 0 && !ppRenderTargetViews) {
-        ERROR("DeviceContext", "OMSetRenderTargets",
+        LOG_ERROR("DeviceContext", "OMSetRenderTargets",
             "ppRenderTargetViews is nullptr, but NumViews > 0");
         return;
     }
@@ -213,13 +213,13 @@ void DeviceContext::OMSetRenderTargets(unsigned int NumViews,
 }
 
 /**
- * @brief Configura la topología de primitivas.
+ * @brief Configura la topologï¿½a de primitivas.
  *
  * @note Ejemplos: TRIANGLELIST, LINELIST, POINTLIST.
  */
 void DeviceContext::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
     if (Topology == D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED) {
-        ERROR("DeviceContext", "IASetPrimitiveTopology",
+        LOG_ERROR("DeviceContext", "IASetPrimitiveTopology",
             "Topology is D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED");
         return;
     }
@@ -227,16 +227,16 @@ void DeviceContext::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
 }
 
 /**
- * @brief Limpia el Render Target con un color sólido.
+ * @brief Limpia el Render Target con un color sï¿½lido.
  */
 void DeviceContext::ClearRenderTargetView(ID3D11RenderTargetView* pRenderTargetView,
     const float ColorRGBA[4]) {
     if (!pRenderTargetView) {
-        ERROR("DeviceContext", "ClearRenderTargetView", "pRenderTargetView is nullptr");
+        LOG_ERROR("DeviceContext", "ClearRenderTargetView", "pRenderTargetView is nullptr");
         return;
     }
     if (!ColorRGBA) {
-        ERROR("DeviceContext", "ClearRenderTargetView", "ColorRGBA is nullptr");
+        LOG_ERROR("DeviceContext", "ClearRenderTargetView", "ColorRGBA is nullptr");
         return;
     }
     m_deviceContext->ClearRenderTargetView(pRenderTargetView, ColorRGBA);
@@ -250,11 +250,11 @@ void DeviceContext::ClearDepthStencilView(ID3D11DepthStencilView* pDepthStencilV
     float Depth,
     UINT8 Stencil) {
     if (!pDepthStencilView) {
-        ERROR("DeviceContext", "ClearDepthStencilView", "pDepthStencilView is nullptr");
+        LOG_ERROR("DeviceContext", "ClearDepthStencilView", "pDepthStencilView is nullptr");
         return;
     }
     if ((ClearFlags & (D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL)) == 0) {
-        ERROR("DeviceContext", "ClearDepthStencilView",
+        LOG_ERROR("DeviceContext", "ClearDepthStencilView",
             "Invalid ClearFlags: must include D3D11_CLEAR_DEPTH or D3D11_CLEAR_STENCIL");
         return;
     }
@@ -268,7 +268,7 @@ void DeviceContext::VSSetConstantBuffers(unsigned int StartSlot,
     unsigned int NumBuffers,
     ID3D11Buffer* const* ppConstantBuffers) {
     if (!ppConstantBuffers) {
-        ERROR("DeviceContext", "VSSetConstantBuffers", "ppConstantBuffers is nullptr");
+        LOG_ERROR("DeviceContext", "VSSetConstantBuffers", "ppConstantBuffers is nullptr");
         return;
     }
     m_deviceContext->VSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
@@ -281,21 +281,34 @@ void DeviceContext::PSSetConstantBuffers(unsigned int StartSlot,
     unsigned int NumBuffers,
     ID3D11Buffer* const* ppConstantBuffers) {
     if (!ppConstantBuffers) {
-        ERROR("DeviceContext", "PSSetConstantBuffers", "ppConstantBuffers is nullptr");
+        LOG_ERROR("DeviceContext", "PSSetConstantBuffers", "ppConstantBuffers is nullptr");
         return;
     }
     m_deviceContext->PSSetConstantBuffers(StartSlot, NumBuffers, ppConstantBuffers);
 }
 
 /**
- * @brief Dibuja geometría usando índices.
+ * @brief Dibuja geometrï¿½a usando ï¿½ndices.
  */
 void DeviceContext::DrawIndexed(unsigned int IndexCount,
     unsigned int StartIndexLocation,
     int BaseVertexLocation) {
     if (IndexCount == 0) {
-        ERROR("DeviceContext", "DrawIndexed", "IndexCount is zero");
+        LOG_ERROR("DeviceContext", "DrawIndexed", "IndexCount is zero");
         return;
     }
     m_deviceContext->DrawIndexed(IndexCount, StartIndexLocation, BaseVertexLocation);
+    ++m_drawCallCount;
+}
+
+/**
+ * @brief Dibuja geometrÃ­a no indexada (ej. lÃ­neas de debug/gizmo sin index buffer).
+ */
+void DeviceContext::Draw(unsigned int VertexCount, unsigned int StartVertexLocation) {
+    if (VertexCount == 0) {
+        LOG_ERROR("DeviceContext", "Draw", "VertexCount is zero");
+        return;
+    }
+    m_deviceContext->Draw(VertexCount, StartVertexLocation);
+    ++m_drawCallCount;
 }

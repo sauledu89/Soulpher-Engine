@@ -43,7 +43,7 @@ HRESULT DepthStencilState::init(Device& device,
                                  D3D11_DEPTH_WRITE_MASK writeMask,
                                  D3D11_COMPARISON_FUNC  compareFunc) {
     if (!device.m_device) {
-        ERROR("DepthStencilState", "init", "Device is null.");
+        LOG_ERROR("DepthStencilState", "init", "Device is null.");
         return E_POINTER;
     }
 
@@ -55,7 +55,7 @@ HRESULT DepthStencilState::init(Device& device,
 
     HRESULT hr = device.CreateDepthStencilState(&desc, &m_depthStencilState);
     if (FAILED(hr)) {
-        ERROR("DepthStencilState", "init", "Failed to create DepthStencilState");
+        LOG_ERROR("DepthStencilState", "init", "Failed to create DepthStencilState");
         return hr;
     }
     return S_OK;
@@ -82,11 +82,11 @@ void DepthStencilState::render(DeviceContext& deviceContext,
     unsigned int stencilRef,
     bool reset) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("DepthStencilState", "render", "DeviceContext is nullptr.");
+        LOG_ERROR("DepthStencilState", "render", "DeviceContext is nullptr.");
         return;
     }
     if (!m_depthStencilState && !reset) {
-        ERROR("DepthStencilState", "render", "DepthStencilState is nullptr");
+        LOG_ERROR("DepthStencilState", "render", "DepthStencilState is nullptr");
         return;
     }
 

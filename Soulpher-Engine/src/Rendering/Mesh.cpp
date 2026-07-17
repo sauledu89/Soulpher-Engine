@@ -57,7 +57,7 @@ Mesh::buildFrom(Device& device, const std::vector<MeshComponent>& components) {
             D3D11_BIND_VERTEX_BUFFER);
 
         if (FAILED(hr)) {
-            ERROR("Mesh", "buildFrom",
+            LOG_ERROR("Mesh", "buildFrom",
                 ("Failed to create vertex buffer for submesh '" + mc.m_name + "'").c_str());
             continue;
         }
@@ -70,7 +70,7 @@ Mesh::buildFrom(Device& device, const std::vector<MeshComponent>& components) {
             D3D11_BIND_INDEX_BUFFER);
 
         if (FAILED(hr)) {
-            ERROR("Mesh", "buildFrom",
+            LOG_ERROR("Mesh", "buildFrom",
                 ("Failed to create index buffer for submesh '" + mc.m_name + "'").c_str());
             sm.vertexBuffer.destroy();
             continue;

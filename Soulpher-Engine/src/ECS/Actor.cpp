@@ -33,6 +33,7 @@
 #include "MeshComponent.h"
 #include "Device.h"
 #include "DeviceContext.h"
+#include <cfloat>  ///< FLT_MAX (AABB local en setMesh)
 
  /**
   * @brief Constructor de Actor.
@@ -56,7 +57,7 @@ Actor::Actor(Device& device) {
     // b1: World matrix
     hr = m_modelBuffer.init(device, sizeof(CBPerObject));
     if (FAILED(hr)) {
-        ERROR("Actor", classNameType.c_str(), "Failed to create CBPerObject buffer");
+        LOG_ERROR("Actor", classNameType.c_str(), "Failed to create CBPerObject buffer");
     }
 
     // b2: material params (defaults: white opaque)
@@ -69,42 +70,42 @@ Actor::Actor(Device& device) {
     m_materialCB.AlphaCutoff      = 0.0f;
     hr = m_materialBuffer.init(device, sizeof(CBPerMaterial));
     if (FAILED(hr)) {
-        ERROR("Actor", classNameType.c_str(), "Failed to create CBPerMaterial buffer");
+        LOG_ERROR("Actor", classNameType.c_str(), "Failed to create CBPerMaterial buffer");
     }
 
     // Estados gráficos
     hr = m_sampler.init(device);
-    if (FAILED(hr)) { ERROR("Actor", classNameType.c_str(), "Failed to create new SamplerState"); }
+    if (FAILED(hr)) { LOG_ERROR("Actor", classNameType.c_str(), "Failed to create new SamplerState"); }
 
     hr = m_rasterizer.init(device);
-    if (FAILED(hr)) { ERROR("Actor", classNameType.c_str(), "Failed to create new Rasterizer"); }
+    if (FAILED(hr)) { LOG_ERROR("Actor", classNameType.c_str(), "Failed to create new Rasterizer"); }
 
     hr = m_blendstate.init(device);
-    if (FAILED(hr)) { ERROR("Actor", classNameType.c_str(), "Failed to create new BlendState"); }
+    if (FAILED(hr)) { LOG_ERROR("Actor", classNameType.c_str(), "Failed to create new BlendState"); }
 
     // Shader para sombras
     hr = m_shaderShadow.CreateShader(device, PIXEL_SHADER, "Soulpher-Engine.fx");
     if (FAILED(hr)) {
-        ERROR("Main", "InitDevice",
+        LOG_ERROR("Main", "InitDevice",
             ("Failed to initialize Shadow Shader. HRESULT: " + std::to_string(hr)).c_str());
     }
 
     // Buffer CB para el pase de sombra (World de la sombra proyectada)
     hr = m_shaderBuffer.init(device, sizeof(CBPerObject));
     if (FAILED(hr)) {
-        ERROR("Main", "InitDevice",
+        LOG_ERROR("Main", "InitDevice",
             ("Failed to initialize Shadow Buffer. HRESULT: " + std::to_string(hr)).c_str());
     }
 
     hr = m_shadowBlendState.init(device);
     if (FAILED(hr)) {
-        ERROR("Main", "InitDevice",
+        LOG_ERROR("Main", "InitDevice",
             ("Failed to initialize Shadow Blend State. HRESULT: " + std::to_string(hr)).c_str());
     }
 
     hr = m_shadowDepthStencilState.init(device, true);
     if (FAILED(hr)) {
-        ERROR("Main", "InitDevice",
+        LOG_ERROR("Main", "InitDevice",
             ("Failed to initialize Depth Stencil State. HRESULT: " + std::to_string(hr)).c_str());
     }
 
@@ -180,13 +181,30 @@ void Actor::setMesh(Device& device, std::vector<MeshComponent> meshes) {
     for (auto& mesh : m_meshes) {
         Buffer vb;
         hr = vb.init(device, mesh, D3D11_BIND_VERTEX_BUFFER);
-        if (FAILED(hr)) { ERROR("Actor", "setMesh", "Failed to create new vertexBuffer"); }
+        if (FAILED(hr)) { LOG_ERROR("Actor", "setMesh", "Failed to create new vertexBuffer"); }
         else { m_vertexBuffers.push_back(vb); }
 
         Buffer ib;
         hr = ib.init(device, mesh, D3D11_BIND_INDEX_BUFFER);
-        if (FAILED(hr)) { ERROR("Actor", "setMesh", "Failed to create new indexBuffer"); }
+        if (FAILED(hr)) { LOG_ERROR("Actor", "setMesh", "Failed to create new indexBuffer"); }
         else { m_indexBuffers.push_back(ib); }
+    }
+
+    // AABB local: min/max de todos los vertices de todas las mallas, usado por el picking.
+    m_hasBounds = false;
+    XMFLOAT3 bmin(FLT_MAX, FLT_MAX, FLT_MAX);
+    XMFLOAT3 bmax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+    for (const auto& mesh : m_meshes) {
+        for (const auto& v : mesh.m_vertex) {
+            bmin.x = (std::min)(bmin.x, v.Pos.x); bmax.x = (std::max)(bmax.x, v.Pos.x);
+            bmin.y = (std::min)(bmin.y, v.Pos.y); bmax.y = (std::max)(bmax.y, v.Pos.y);
+            bmin.z = (std::min)(bmin.z, v.Pos.z); bmax.z = (std::max)(bmax.z, v.Pos.z);
+            m_hasBounds = true;
+        }
+    }
+    if (m_hasBounds) {
+        m_localBoundsMin = bmin;
+        m_localBoundsMax = bmax;
     }
 }
 

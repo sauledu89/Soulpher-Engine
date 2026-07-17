@@ -40,11 +40,11 @@
   */
 HRESULT RenderTargetView::init(Device& device, Texture& backBuffer, DXGI_FORMAT Format) {
     if (!device.m_device) {
-        ERROR("RenderTargetView", "init", "Device is nullptr.");
+        LOG_ERROR("RenderTargetView", "init", "Device is nullptr.");
         return E_POINTER;
     }
     if (!backBuffer.m_texture) {
-        ERROR("RenderTargetView", "init", "Texture is nullptr.");
+        LOG_ERROR("RenderTargetView", "init", "Texture is nullptr.");
         return E_POINTER;
     }
 
@@ -67,7 +67,7 @@ HRESULT RenderTargetView::init(Device& device, Texture& backBuffer, DXGI_FORMAT 
         // Fallback: deja que D3D infiera la descripci�n
         hr = device.m_device->CreateRenderTargetView(backBuffer.m_texture, nullptr, &m_renderTargetView);
         if (FAILED(hr)) {
-            ERROR("RenderTargetView", "init",
+            LOG_ERROR("RenderTargetView", "init",
                 ("Failed to create RTV. HRESULT: " + std::to_string(hr)).c_str());
             return hr;
         }
@@ -93,11 +93,11 @@ HRESULT RenderTargetView::init(Device& device, Texture& backBuffer, DXGI_FORMAT 
 HRESULT RenderTargetView::init(Device& device, Texture& inTex,
     D3D11_RTV_DIMENSION ViewDimension, DXGI_FORMAT Format) {
     if (!device.m_device) {
-        ERROR("RenderTargetView", "init", "Device is nullptr.");
+        LOG_ERROR("RenderTargetView", "init", "Device is nullptr.");
         return E_POINTER;
     }
     if (!inTex.m_texture) {
-        ERROR("RenderTargetView", "init", "Texture is nullptr.");
+        LOG_ERROR("RenderTargetView", "init", "Texture is nullptr.");
         return E_POINTER;
     }
 
@@ -119,7 +119,7 @@ HRESULT RenderTargetView::init(Device& device, Texture& inTex,
 
     HRESULT hr = device.m_device->CreateRenderTargetView(inTex.m_texture, &desc, &m_renderTargetView);
     if (FAILED(hr)) {
-        ERROR("RenderTargetView", "init",
+        LOG_ERROR("RenderTargetView", "init",
             ("Failed to create RTV. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -144,11 +144,11 @@ void RenderTargetView::render(DeviceContext& deviceContext,
     unsigned int numViews,
     const float ClearColor[4]) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("RenderTargetView", "render", "DeviceContext is nullptr.");
+        LOG_ERROR("RenderTargetView", "render", "DeviceContext is nullptr.");
         return;
     }
     if (!m_renderTargetView) {
-        ERROR("RenderTargetView", "render", "RenderTargetView is nullptr.");
+        LOG_ERROR("RenderTargetView", "render", "RenderTargetView is nullptr.");
         return;
     }
 
@@ -175,11 +175,11 @@ void RenderTargetView::render(DeviceContext& deviceContext,
  */
 void RenderTargetView::render(DeviceContext& deviceContext, unsigned int numViews) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("RenderTargetView", "render", "DeviceContext is nullptr.");
+        LOG_ERROR("RenderTargetView", "render", "DeviceContext is nullptr.");
         return;
     }
     if (!m_renderTargetView) {
-        ERROR("RenderTargetView", "render", "RenderTargetView is nullptr.");
+        LOG_ERROR("RenderTargetView", "render", "RenderTargetView is nullptr.");
         return;
     }
 

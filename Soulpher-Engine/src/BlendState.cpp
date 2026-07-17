@@ -34,7 +34,7 @@
   */
 HRESULT BlendState::init(Device& device) {
     if (!device.m_device) {
-        ERROR("BlendState", "init", "Device is null.");
+        LOG_ERROR("BlendState", "init", "Device is null.");
         return E_POINTER;
     }
 
@@ -64,7 +64,7 @@ HRESULT BlendState::init(Device& device) {
     // Crear el estado
     HRESULT hr = device.m_device->CreateBlendState(&blendDesc, &m_blendState);
     if (FAILED(hr)) {
-        ERROR("BlendState", "init",
+        LOG_ERROR("BlendState", "init",
             ("Failed to create blend state. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -88,11 +88,11 @@ void BlendState::render(DeviceContext& deviceContext,
     unsigned int sampleMask,
     bool reset) {
     if (!deviceContext.m_deviceContext) {
-        ERROR("BlendState", "render", "DeviceContext is nullptr.");
+        LOG_ERROR("BlendState", "render", "DeviceContext is nullptr.");
         return;
     }
     if (!m_blendState && !reset) {
-        ERROR("BlendState", "render", "BlendState is not initialized.");
+        LOG_ERROR("BlendState", "render", "BlendState is not initialized.");
         return;
     }
 

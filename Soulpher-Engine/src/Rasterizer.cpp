@@ -61,7 +61,7 @@ HRESULT Rasterizer::init(Device device) {
     HRESULT hr = device.CreateRasterizerState(&rasterizerDesc, &m_rasterizerState);
 
     if (FAILED(hr)) {
-        ERROR("Rasterizer", "init", "CHECK FOR CreateRasterizerState()");
+        LOG_ERROR("Rasterizer", "init", "CHECK FOR CreateRasterizerState()");
     }
     return hr;
 }

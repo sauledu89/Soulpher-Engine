@@ -44,11 +44,11 @@ HRESULT InputLayout::init(Device& device,
     std::vector<D3D11_INPUT_ELEMENT_DESC>& Layout,
     ID3DBlob* VertexShaderData) {
     if (Layout.empty()) {
-        ERROR("InputLayout", "init", "Layout vector is empty.");
+        LOG_ERROR("InputLayout", "init", "Layout vector is empty.");
         return E_INVALIDARG;
     }
     if (!VertexShaderData) {
-        ERROR("InputLayout", "init", "VertexShaderData is nullptr.");
+        LOG_ERROR("InputLayout", "init", "VertexShaderData is nullptr.");
         return E_POINTER;
     }
 
@@ -59,7 +59,7 @@ HRESULT InputLayout::init(Device& device,
         &m_inputLayout);
 
     if (FAILED(hr)) {
-        ERROR("InputLayout", "init",
+        LOG_ERROR("InputLayout", "init",
             ("Failed to create InputLayout. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -84,7 +84,7 @@ void InputLayout::update() {
  */
 void InputLayout::render(DeviceContext& deviceContext) {
     if (!m_inputLayout) {
-        ERROR("InputLayout", "render", "InputLayout is nullptr");
+        LOG_ERROR("InputLayout", "render", "InputLayout is nullptr");
         return;
     }
 

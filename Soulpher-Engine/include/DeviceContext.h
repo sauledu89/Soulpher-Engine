@@ -155,6 +155,20 @@ public:
         unsigned int StartIndexLocation,
         int BaseVertexLocation);
 
+    /** @brief Dibuja geometría no indexada (ej. líneas de debug/gizmo). */
+    void Draw(unsigned int VertexCount, unsigned int StartVertexLocation);
+
+    // === Estadísticas de frame (panel de stats) ===
+
+    /** @brief Pone a cero el contador de draw calls. Llamar al inicio de cada frame. */
+    void resetDrawCallCount() { m_drawCallCount = 0; }
+
+    /** @brief Draw calls acumulados desde el último resetDrawCallCount(). */
+    unsigned int getDrawCallCount() const { return m_drawCallCount; }
+
 public:
     ID3D11DeviceContext* m_deviceContext = nullptr; ///< Puntero al contexto de dispositivo Direct3D 11.
+
+private:
+    unsigned int m_drawCallCount = 0; ///< Incrementado en cada DrawIndexed() para el panel de stats.
 };

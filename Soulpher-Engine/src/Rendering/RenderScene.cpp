@@ -26,5 +26,5 @@ void
 RenderScene::clear() {
     opaqueObjects.clear();
     transparentObjects.clear();
-    directionalLights.clear();
+    lights.clear();
 }

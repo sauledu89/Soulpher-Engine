@@ -51,35 +51,35 @@ ForwardRenderer::init(Device& device, unsigned int shadowMapSize) {
         D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE
     );
     if (FAILED(hr)) {
-        ERROR("ForwardRenderer", "init", "Failed to create shadow depth texture.");
+        LOG_ERROR("ForwardRenderer", "init", "Failed to create shadow depth texture.");
         return hr;
     }
 
     // Depth-stencil view for writing during shadow pass
     hr = m_shadowDSV.init(device, m_shadowTex, DXGI_FORMAT_D24_UNORM_S8_UINT);
     if (FAILED(hr)) {
-        ERROR("ForwardRenderer", "init", "Failed to create shadow DSV.");
+        LOG_ERROR("ForwardRenderer", "init", "Failed to create shadow DSV.");
         return hr;
     }
 
     // SRV alias for reading in the main PS (R24_UNORM_X8_TYPELESS reads the depth channel)
     hr = m_shadowSRV.init(device, m_shadowTex, DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
     if (FAILED(hr)) {
-        ERROR("ForwardRenderer", "init", "Failed to create shadow SRV.");
+        LOG_ERROR("ForwardRenderer", "init", "Failed to create shadow SRV.");
         return hr;
     }
 
     // Fixed shadow viewport
     hr = m_shadowViewport.init(shadowMapSize, shadowMapSize);
     if (FAILED(hr)) {
-        ERROR("ForwardRenderer", "init", "Failed to create shadow viewport.");
+        LOG_ERROR("ForwardRenderer", "init", "Failed to create shadow viewport.");
         return hr;
     }
 
     // Compile shadow depth VS (entry point must be "VS" — ShaderProgram is hardcoded to that name)
     hr = m_shadowDepthShader.CreateShader(device, VERTEX_SHADER, "ShadowDepth.hlsl");
     if (FAILED(hr)) {
-        ERROR("ForwardRenderer", "init", "Failed to compile ShadowDepth.hlsl.");
+        LOG_ERROR("ForwardRenderer", "init", "Failed to compile ShadowDepth.hlsl.");
         return hr;
     }
 
@@ -100,7 +100,7 @@ ForwardRenderer::init(Device& device, unsigned int shadowMapSize) {
     }
     hr = m_shadowDepthShader.CreateInputLayout(device, posLayout);
     if (FAILED(hr)) {
-        ERROR("ForwardRenderer", "init", "Failed to create shadow input layout.");
+        LOG_ERROR("ForwardRenderer", "init", "Failed to create shadow input layout.");
         return hr;
     }
 

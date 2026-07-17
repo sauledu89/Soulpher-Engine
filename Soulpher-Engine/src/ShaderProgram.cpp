@@ -35,15 +35,15 @@ ShaderProgram::init(Device& device,
      * @return HRESULT S_OK si se inicializ� correctamente, o c�digo de error en caso contrario.
      */
     if (!device.m_device) {
-        ERROR("ShaderProgram", "init", "Device is null.");
+        LOG_ERROR("ShaderProgram", "init", "Device is null.");
         return E_POINTER;
     }
     if (fileName.empty()) {
-        ERROR("ShaderProgram", "init", "File name is empty.");
+        LOG_ERROR("ShaderProgram", "init", "File name is empty.");
         return E_INVALIDARG;
     }
     if (Layout.empty()) {
-        ERROR("ShaderProgram", "init", "Input layout is empty.");
+        LOG_ERROR("ShaderProgram", "init", "Input layout is empty.");
         return E_INVALIDARG;
     }
     m_shaderFileName = fileName;
@@ -51,21 +51,21 @@ ShaderProgram::init(Device& device,
     // Crear Vertex Shader
     HRESULT hr = CreateShader(device, ShaderType::VERTEX_SHADER);
     if (FAILED(hr)) {
-        ERROR("ShaderProgram", "init", "Failed to create vertex shader.");
+        LOG_ERROR("ShaderProgram", "init", "Failed to create vertex shader.");
         return hr;
     }
 
     // Crear Input Layout
     hr = CreateInputLayout(device, Layout);
     if (FAILED(hr)) {
-        ERROR("ShaderProgram", "init", "Failed to create input layout.");
+        LOG_ERROR("ShaderProgram", "init", "Failed to create input layout.");
         return hr;
     }
 
     // Crear Pixel Shader
     hr = CreateShader(device, ShaderType::PIXEL_SHADER);
     if (FAILED(hr)) {
-        ERROR("ShaderProgram", "init", "Failed to create pixel shader.");
+        LOG_ERROR("ShaderProgram", "init", "Failed to create pixel shader.");
         return hr;
     }
 
@@ -82,15 +82,15 @@ ShaderProgram::CreateInputLayout(Device& device,
      * @return HRESULT S_OK si se cre� correctamente, o c�digo de error en caso contrario.
      */
     if (!m_vertexShaderData) {
-        ERROR("ShaderProgram", "CreateInputLayout", "Vertex shader data is null.");
+        LOG_ERROR("ShaderProgram", "CreateInputLayout", "Vertex shader data is null.");
         return E_POINTER;
     }
     if (!device.m_device) {
-        ERROR("ShaderProgram", "CreateInputLayout", "Device is null.");
+        LOG_ERROR("ShaderProgram", "CreateInputLayout", "Device is null.");
         return E_POINTER;
     }
     if (Layout.empty()) {
-        ERROR("ShaderProgram", "CreateInputLayout", "Input layout is empty.");
+        LOG_ERROR("ShaderProgram", "CreateInputLayout", "Input layout is empty.");
         return E_INVALIDARG;
     }
 
@@ -98,7 +98,7 @@ ShaderProgram::CreateInputLayout(Device& device,
     SAFE_RELEASE(m_vertexShaderData);
 
     if (FAILED(hr)) {
-        ERROR("ShaderProgram", "CreateInputLayout", "Failed to create input layout.");
+        LOG_ERROR("ShaderProgram", "CreateInputLayout", "Failed to create input layout.");
         return hr;
     }
 
@@ -114,11 +114,11 @@ ShaderProgram::CreateShader(Device& device, ShaderType type) {
      * @return HRESULT S_OK si se cre� correctamente, o c�digo de error en caso contrario.
      */
     if (!device.m_device) {
-        ERROR("ShaderProgram", "CreateShader", "Device is null.");
+        LOG_ERROR("ShaderProgram", "CreateShader", "Device is null.");
         return E_POINTER;
     }
     if (m_shaderFileName.empty()) {
-        ERROR("ShaderProgram", "CreateShader", "Shader file name is empty.");
+        LOG_ERROR("ShaderProgram", "CreateShader", "Shader file name is empty.");
         return E_INVALIDARG;
     }
 
@@ -135,7 +135,7 @@ ShaderProgram::CreateShader(Device& device, ShaderType type) {
         &shaderData);
 
     if (FAILED(hr)) {
-        ERROR("ShaderProgram", "CreateShader",
+        LOG_ERROR("ShaderProgram", "CreateShader",
             "Failed to compile shader from file: %s", m_shaderFileName.c_str());
         return hr;
     }
@@ -155,7 +155,7 @@ ShaderProgram::CreateShader(Device& device, ShaderType type) {
     }
 
     if (FAILED(hr)) {
-        ERROR("ShaderProgram", "CreateShader",
+        LOG_ERROR("ShaderProgram", "CreateShader",
             "Failed to create shader object from compiled data.");
         shaderData->Release();
         return hr;
@@ -184,11 +184,11 @@ ShaderProgram::CreateShader(Device& device, ShaderType type, const std::string& 
      * @return HRESULT S_OK si se cre� correctamente, o c�digo de error.
      */
     if (!device.m_device) {
-        ERROR("ShaderProgram", "init", "Device is null.");
+        LOG_ERROR("ShaderProgram", "init", "Device is null.");
         return E_POINTER;
     }
     if (fileName.empty()) {
-        ERROR("ShaderProgram", "init", "File name is empty.");
+        LOG_ERROR("ShaderProgram", "init", "File name is empty.");
         return E_INVALIDARG;
     }
     m_shaderFileName = fileName;
@@ -232,13 +232,13 @@ ShaderProgram::CompileShaderFromFile(char* szFileName,
 
     if (FAILED(hr)) {
         if (pErrorBlob) {
-            ERROR("ShaderProgram", "CompileShaderFromFile",
+            LOG_ERROR("ShaderProgram", "CompileShaderFromFile",
                 "Failed to compile shader from file: %s. Error: %s",
                 szFileName, static_cast<const char*>(pErrorBlob->GetBufferPointer()));
             pErrorBlob->Release();
         }
         else {
-            ERROR("ShaderProgram", "CompileShaderFromFile",
+            LOG_ERROR("ShaderProgram", "CompileShaderFromFile",
                 "Failed to compile shader from file: %s. No error message available.",
                 szFileName);
         }
@@ -261,7 +261,7 @@ ShaderProgram::render(DeviceContext& deviceContext) {
      * @param deviceContext Contexto de dispositivo para emitir comandos de renderizado.
      */
     if (!m_VertexShader || !m_PixelShader || !m_inputLayout.m_inputLayout) {
-        ERROR("ShaderProgram", "render", "Shaders or InputLayout not initialized");
+        LOG_ERROR("ShaderProgram", "render", "Shaders or InputLayout not initialized");
         return;
     }
 
@@ -278,7 +278,7 @@ ShaderProgram::render(DeviceContext& deviceContext, ShaderType type) {
      * @param type Tipo de shader a activar.
      */
     if (!deviceContext.m_deviceContext) {
-        ERROR("RenderTargetView", "render", "DeviceContext is nullptr.");
+        LOG_ERROR("RenderTargetView", "render", "DeviceContext is nullptr.");
         return;
     }
     switch (type) {

@@ -62,7 +62,7 @@ HRESULT Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc) {
 
     if (!RegisterClassEx(&wcex)) {
         MessageBox(nullptr, "RegisterClassEx failed!", "Error", MB_OK);
-        ERROR("Window", "init", "CHECK FOR RegisterClassEx");
+        LOG_ERROR("Window", "init", "CHECK FOR RegisterClassEx");
         return E_FAIL;
     }
 
@@ -77,8 +77,8 @@ HRESULT Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc) {
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        m_rect.right - m_rect.left,
-        m_rect.bottom - m_rect.top,
+        rc.right - rc.left,
+        rc.bottom - rc.top,
         nullptr,
         nullptr,
         hInstance,
@@ -87,7 +87,7 @@ HRESULT Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndproc) {
 
     if (!m_hWnd) {
         MessageBox(nullptr, "CreateWindow failed!", "Error", MB_OK);
-        ERROR("Window", "init", "CHECK FOR CreateWindow()");
+        LOG_ERROR("Window", "init", "CHECK FOR CreateWindow()");
         return E_FAIL;
     }
 

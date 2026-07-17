@@ -50,6 +50,7 @@
 #include "EngineUtilities\Memory\TUniquePtr.h"      ///< Puntero inteligente único.
 #include "EngineUtilities\Vectors\Vector3.h"        ///< EU::Vector3 — usado en SimpleVertex y CBPerFrame.
 #include "EngineUtilities\Vectors\Vector2.h"        ///< EU::Vector2 — usado en SimpleVertex.
+#include "EngineUtilities\Utilities\LogManager.h"   ///< LogManager + macros LOG_MESSAGE/LOG_WARNING/LOG_ERROR.
 
 // === Macros de utilidad ===
 
@@ -61,26 +62,10 @@
  */
 #define SAFE_RELEASE(x) if(x != nullptr) x->Release(); x = nullptr;
 
- /**
-  * @brief Muestra un mensaje de creación de recurso en el depurador.
-  * @param classObj Nombre de la clase que crea el recurso.
-  * @param method Nombre del método.
-  * @param state Estado o descripción del recurso creado.
-  */
-#define MESSAGE(classObj, method, state) \
-{ std::wostringstream os_; os_ << classObj << "::" << method << " : [CREATION OF RESOURCE : " << state << "]\n"; \
-  OutputDebugStringW(os_.str().c_str()); }
-
-  /**
-   * @brief Muestra un mensaje de error en el depurador.
-   * @param classObj Nombre de la clase que genera el error.
-   * @param method Nombre del método.
-   * @param errorMSG Mensaje descriptivo del error.
-   */
-#define ERROR(classObj, method, errorMSG) \
-{ try { std::wostringstream os_; os_ << L"ERROR : " << classObj << L"::" << method << L" : " << errorMSG << L"\n"; \
-  OutputDebugStringW(os_.str().c_str()); } \
-  catch (...) { OutputDebugStringW(L"Failed to log error message.\n"); } }
+// NOTA: los mensajes de creación de recursos y errores usan LOG_MESSAGE/LOG_ERROR,
+// definidas en EngineUtilities/Utilities/LogManager.h (incluido arriba). Ambas
+// enrutan al LogManager central (consola de la UI + OutputDebugString), con la
+// misma firma (classObj, method, state) que las antiguas macros MESSAGE/ERROR.
 
    // === Estructuras comunes ===
 
@@ -154,4 +139,4 @@ enum ShaderType { VERTEX_SHADER = 0, PIXEL_SHADER = 1 };
  * @enum ComponentType
  * @brief Tipos de componentes en el sistema ECS.
  */
-enum ComponentType { NONE = 0, TRANSFORM = 1, MESH = 2, MATERIAL = 3 };
+enum ComponentType { NONE = 0, TRANSFORM = 1, MESH = 2, MATERIAL = 3, LIGHT = 4 };

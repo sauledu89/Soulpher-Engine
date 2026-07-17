@@ -36,7 +36,7 @@ SwapChain::init(Device& device,
     Window window)
 {
     if (!window.m_hWnd) {
-        ERROR("SwapChain", "init", "Invalid window handle. (m_hWnd is nullptr)");
+        LOG_ERROR("SwapChain", "init", "Invalid window handle. (m_hWnd is nullptr)");
         return E_POINTER;
     }
 
@@ -81,13 +81,13 @@ SwapChain::init(Device& device,
             &deviceContext.m_deviceContext);
 
         if (SUCCEEDED(hr)) {
-            MESSAGE("SwapChain", "init", "Device created successfully.");
+            LOG_MESSAGE("SwapChain", "init", "Device created successfully.");
             created = true;
             break;
         }
     }
     if (!created) {
-        ERROR("SwapChain", "init",
+        LOG_ERROR("SwapChain", "init",
             ("Failed to create D3D11 device. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -114,20 +114,20 @@ SwapChain::init(Device& device,
     // Obtener la factory de DXGI
     hr = device.m_device->QueryInterface(__uuidof(IDXGIDevice), (void**)&m_dxgiDevice);
     if (FAILED(hr)) {
-        ERROR("SwapChain", "init",
+        LOG_ERROR("SwapChain", "init",
             ("Failed to query IDXGIDevice. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
     hr = m_dxgiDevice->GetAdapter(&m_dxgiAdapter);
     if (FAILED(hr)) {
-        ERROR("SwapChain", "init",
+        LOG_ERROR("SwapChain", "init",
             ("Failed to get IDXGIAdapter. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
     hr = m_dxgiAdapter->GetParent(__uuidof(IDXGIFactory),
         reinterpret_cast<void**>(&m_dxgiFactory));
     if (FAILED(hr)) {
-        ERROR("SwapChain", "init",
+        LOG_ERROR("SwapChain", "init",
             ("Failed to get IDXGIFactory. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -135,7 +135,7 @@ SwapChain::init(Device& device,
     // Crear la swap chain
     hr = m_dxgiFactory->CreateSwapChain(device.m_device, &sd, &m_swapChain);
     if (FAILED(hr)) {
-        ERROR("SwapChain", "init",
+        LOG_ERROR("SwapChain", "init",
             ("Failed to create swap chain. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -144,7 +144,7 @@ SwapChain::init(Device& device,
     ID3D11Texture2D* bb = nullptr;
     hr = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&bb);
     if (FAILED(hr)) {
-        ERROR("SwapChain", "init",
+        LOG_ERROR("SwapChain", "init",
             ("Failed to get back buffer. HRESULT: " + std::to_string(hr)).c_str());
         return hr;
     }
@@ -181,11 +181,11 @@ SwapChain::present() {
     if (m_swapChain) {
         HRESULT hr = m_swapChain->Present(0, 0);
         if (FAILED(hr)) {
-            ERROR("SwapChain", "present",
+            LOG_ERROR("SwapChain", "present",
                 ("Failed to present swap chain. HRESULT: " + std::to_string(hr)).c_str());
         }
     }
     else {
-        ERROR("SwapChain", "present", "Swap chain is not initialized.");
+        LOG_ERROR("SwapChain", "present", "Swap chain is not initialized.");
     }
 }

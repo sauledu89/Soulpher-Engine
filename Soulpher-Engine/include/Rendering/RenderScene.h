@@ -41,6 +41,6 @@ public:
 public:
     std::vector<RenderObject> opaqueObjects;       ///< Objetos con MaterialDomain::Opaque.
     std::vector<RenderObject> transparentObjects;  ///< Objetos con MaterialDomain::Transparent, ordenados back-to-front.
-    std::vector<LightData>    directionalLights;   ///< Luces direccionales activas en la escena.
+    std::vector<LightData>    lights;              ///< Luces activas de la escena (Directional/Point/Spot mezcladas).
     Skybox*                   skybox = nullptr;    ///< Skybox de la escena (opcional, puede ser nullptr).
 };

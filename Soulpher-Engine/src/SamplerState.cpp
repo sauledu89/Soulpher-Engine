@@ -45,7 +45,7 @@
   */
 HRESULT SamplerState::init(Device& device) {
     if (!device.m_device) {
-        ERROR("SamplerState", "init", "Device is nullptr");
+        LOG_ERROR("SamplerState", "init", "Device is nullptr");
         return E_POINTER;
     }
 
@@ -60,7 +60,7 @@ HRESULT SamplerState::init(Device& device) {
 
     HRESULT hr = device.CreateSamplerState(&sampDesc, &m_sampler);
     if (FAILED(hr)) {
-        ERROR("SamplerState", "init", "Failed to create SamplerState");
+        LOG_ERROR("SamplerState", "init", "Failed to create SamplerState");
         return hr;
     }
 
@@ -93,7 +93,7 @@ void SamplerState::render(DeviceContext& deviceContext,
     unsigned int StartSlot,
     unsigned int NumSamplers) {
     if (!m_sampler) {
-        ERROR("SamplerState", "render", "SamplerState is nullptr");
+        LOG_ERROR("SamplerState", "render", "SamplerState is nullptr");
         return;
     }
 
