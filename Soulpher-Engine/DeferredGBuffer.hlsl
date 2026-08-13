@@ -38,10 +38,8 @@ cbuffer CBPerMaterial : register(b2)
     float  AlphaCutoff;
     float  _pad0;
     float  _pad1;
-    float  _pad2;
-    float  _pad3;
-    float  _pad4;
-    float  _pad5;
+    float2 UVTiling;    // Repeticiones de textura en U/V.
+    float2 UVOffset;    // Desplazamiento de UV tras el tiling — mismo layout binario que los _pad2-_pad5 que reemplaza.
 }
 
 // ─── Textures (t0=albedo, t1=normal, t2=metallic, t3=roughness, t4=AO) ───────
@@ -110,8 +108,14 @@ VS_OUTPUT VS(VS_INPUT input)
 // lighting pass = "cómo se ve iluminado".
 PS_OUTPUT PS(VS_OUTPUT input)
 {
+    // UVTiling multiplica las UVs del vértice antes de samplear cualquier textura de este
+    // material — repite el patrón UVTiling.x veces en U y UVTiling.y veces en V (1,1 = sin
+    // tiling extra sobre las UVs ya horneadas en la malla). UVOffset se suma despues, para
+    // desplazar el patron ya repetido (encuadre, o animacion sumando algo como Time*speed).
+    float2 uv = input.tex * UVTiling + UVOffset;
+
     // Sample albedo; apply material base color tint
-    float4 albedo = AlbedoTexture.Sample(Sampler, input.tex) * BaseColor;
+    float4 albedo = AlbedoTexture.Sample(Sampler, uv) * BaseColor;
 
     // [GameDev] clip() descarta el píxel (no escribe a NINGÚN render target, incluida la
     // profundidad) si el argumento es negativo. Para materiales Masked (follaje, rejillas,
@@ -135,7 +139,7 @@ PS_OUTPUT PS(VS_OUTPUT input)
     // transforma de tangent-space a world-space multiplicando por la matriz TBN (Tangent-
     // Bitangent-Normal) — el mismo truco que usa prácticamente cualquier motor con normal
     // mapping, desde Doom 3 en adelante.
-    float3 tangentNormal = NormalTexture.Sample(Sampler, input.tex).rgb * 2.0f - 1.0f;
+    float3 tangentNormal = NormalTexture.Sample(Sampler, uv).rgb * 2.0f - 1.0f;
     tangentNormal.xy *= NormalScale;
     tangentNormal = normalize(tangentNormal);
     float3x3 TBN = float3x3(T, B, N);
@@ -143,9 +147,9 @@ PS_OUTPUT PS(VS_OUTPUT input)
 
     // Metallic/Roughness/AO: textura (canal R) multiplicada por el escalar de CBPerMaterial.
     // Con el default blanco (sin mapa), texture.r=1 y el resultado es el escalar tal cual.
-    float metallic  = MetallicTexture.Sample(Sampler, input.tex).r  * Metallic;
-    float roughness = RoughnessTexture.Sample(Sampler, input.tex).r * Roughness;
-    float ao        = AOTexture.Sample(Sampler, input.tex).r        * AO;
+    float metallic  = MetallicTexture.Sample(Sampler, uv).r  * Metallic;
+    float roughness = RoughnessTexture.Sample(Sampler, uv).r * Roughness;
+    float ao        = AOTexture.Sample(Sampler, uv).r        * AO;
 
     // [GameDev] RT1 es UNORM (8 bits/canal para el ejemplo típico, o el float del formato
     // elegido) y no puede almacenar negativos, pero una normal world-space válida tiene

@@ -206,6 +206,34 @@ private:
     /** @brief Dibuja un objeto en forward con el pass indicado (Opaque/Transparent). */
     void renderForwardObject(DeviceContext& deviceContext, const RenderObject& object, RenderPassType passType);
 
+    /**
+     * @brief Rellena con SRVs de default (blanco / normal plano) cualquier slot t0-t4 sin
+     * textura asignada — usado tanto por `renderGeometryObject` como por
+     * `renderForwardObject` para que un `MaterialInstance` sin, por ejemplo, textura de
+     * albedo, sea tratado como blanco (`textura.rgba=1`) en vez de negro/alpha-0
+     * (comportamiento de D3D11 al samplear un SRV nulo).
+     *
+     * @note [GameDev] Regla de D3D11: `Texture2D::Sample()` sobre un slot con ningún SRV
+     * enlazado (`PSSetShaderResources` nunca llamado, o llamado con `nullptr`) devuelve
+     * literalmente `(0,0,0,0)` — no un error, no una excepción, cero silencioso. Esto
+     * causó un bug real durante el desarrollo del Material Editor: un material Transparent
+     * recién creado (sin textura de Albedo todavía) tenía `albedo = texturaMuestreada *
+     * BaseColor = (0,0,0,0) * BaseColor = (0,0,0,0)` — su canal alpha de salida quedaba en
+     * 0 sin importar qué valor tuviera `BaseColor.a`, así que el objeto se dibujaba
+     * completamente invisible, y mover el slider de opacidad en el editor no cambiaba nada
+     * (0 por cualquier cosa sigue siendo 0). La lección: cualquier shader que declare un
+     * recurso de textura necesita, o bien garantizar que SIEMPRE hay algo enlazado ahí
+     * (este método), o manejar explícitamente el caso "sin textura" en el propio HLSL.
+     */
+    void bindTextureFallbacks(DeviceContext& deviceContext, MaterialInstance* materialInstance);
+
+    /**
+     * @brief Calcula el BaseColor final para `CBPerMaterial`: `params.baseColor` con RGB
+     * multiplicado por `tint` (resaltado de selección aplicado solo en el draw) y alpha
+     * sin tocar — usado tanto por `renderGeometryObject` como por `renderForwardObject`.
+     */
+    static XMFLOAT4 computeTintedBaseColor(const MaterialParams& params, const XMFLOAT3& tint);
+
     /** @brief Shadow depth pass: dibuja la escena desde el punto de vista de la luz. */
     void renderShadowPass(DeviceContext& deviceContext);
 

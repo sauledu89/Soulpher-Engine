@@ -12,6 +12,7 @@
 #pragma once
 #include "Prerequisites.h"
 #include "Rendering/RenderTypes.h"
+#include <deque>
 
 #include "Window.h"
 #include "Device.h"
@@ -171,20 +172,49 @@ private:
     SamplerState       m_defaultSampler;       ///< Sampler bilineal por defecto.
     Material           m_defaultMaterial;      ///< Material opaco base (sin shader propio — el DeferredRenderer usa m_gBufferShader).
     Material           m_transparentMaterial;  ///< Material para vidrio/transparencias: MaterialDomain::Transparent + BlendMode::Alpha. Usa m_shaderProgram (Soulpher-Engine.fx) porque el pass transparente es forward, no deferred.
+    Material           m_maskedMaterial;       ///< Igual que m_defaultMaterial pero MaterialDomain::Masked — DeferredGBuffer.hlsl hace `clip(albedo.a - AlphaCutoff)` (linea 105), asi que el slider "Alpha Cutoff" del Material Editor solo tiene efecto visible en materiales con este dominio.
     Texture            m_defaultCheckerTexture; ///< Checkerboard magenta/negro procedural — fallback cuando falla la carga de una textura real.
 
     // Recursos GPU por actor (Mesh + textura separada para MaterialInstance)
     Mesh             m_kirbyMesh;                ///< Submallas GPU de Kirby.
     Texture          m_kirbyAlbedoTex;           ///< Textura de albedo de Kirby (para MaterialInstance).
     MaterialInstance m_kirbyMaterialInstance;    ///< Material instance de Kirby.
+    /**
+     * @brief MaterialInstance* que BaseApp::render() bindea de verdad para Kirby. Por
+     * defecto apunta a m_kirbyMaterialInstance, pero el Material Editor puede redirigirlo
+     * a cualquier otro MaterialInstance (built-in o creado ahi) via MaterialRenderSlot.
+     * @note [GameDev] Este patrón (un miembro "de verdad", más un puntero-a-ese-miembro
+     * que es lo que el resto del código realmente lee) es la forma más barata de hacer
+     * "reasignable en runtime" algo que originalmente era fijo, sin tocar el código que ya
+     * arma la escena por nombre (`if (name == "Kirby")` en render()). El costo es que ahora
+     * hay dos cosas con nombre parecido (`m_kirbyMaterialInstance` vs `m_kirbySlotMaterial`)
+     * y hay que recordar cuál lee el renderer — por eso todos los `*SlotMaterial` siguen la
+     * misma convención de nombre en todo el archivo (ver los siguientes).
+     */
+    MaterialInstance* m_kirbySlotMaterial = &m_kirbyMaterialInstance;
 
     Mesh             m_planeMeshGpu;             ///< Submallas GPU del plano de suelo.
     MaterialInstance m_planeMaterialInstance;    ///< Material instance del suelo.
+    MaterialInstance* m_planeSlotMaterial = &m_planeMaterialInstance; ///< Ver m_kirbySlotMaterial.
 
     // Sci-Fi Toad: un submesh + MaterialInstance por parte (Body/Glass/Head), elegidos por
     // nombre del nodo FBX de origen (ver bloque "Sci-Fi Toad" en BaseApp::init()).
     Mesh                            m_sciFiToadMesh;                 ///< Submallas GPU de Sci-Fi Toad (Body/Glass/Head).
-    std::vector<MaterialInstance*>  m_sciFiToadSubmeshMaterials;     ///< Un MaterialInstance* por submesh, indexado por Submesh::materialSlot.
+    std::vector<MaterialInstance*>  m_sciFiToadSubmeshMaterials;     ///< Un MaterialInstance* por submesh — reconstruido cada frame en render() a partir de m_sciFiToadSubmeshBucket + los tres *SlotMaterial de abajo.
+    /**
+     * @brief Bucket (0=Body/1=Glass/2=Head) por submesh, fijado una vez en init() por
+     * nombre de nodo FBX (ver el bloque "Sci-Fi Toad" de init()).
+     * @note [GameDev] Antes esto guardaba directamente el `MaterialInstance*` de cada
+     * submesh, decidido una sola vez al cargar el FBX. El problema: si el Material Editor
+     * quería reasignar "el material del Body" a otra cosa, no había ningún puntero único
+     * al que apuntarle — el mismo `MaterialInstance*` estaba copiado en N posiciones del
+     * vector (una por submesh Body). La solución es un nivel más de indirección: guardar
+     * a qué "categoría" pertenece cada submesh (el bucket, fijo, decidido por el nombre
+     * del nodo FBX) en vez del material en sí, y resolver bucket→material cada frame
+     * contra los tres `*SlotMaterial` (que sí son reasignables). Es el mismo patrón que
+     * `MaterialRenderSlot`, aplicado a nivel de submesh en vez de a nivel de actor.
+     */
+    std::vector<int>                m_sciFiToadSubmeshBucket;
 
     Texture          m_sciFiToadBodyAlbedoTex;      ///< Body: base color.
     Texture          m_sciFiToadBodyNormalTex;      ///< Body: normal map.
@@ -192,15 +222,41 @@ private:
     Texture          m_sciFiToadBodyRoughnessTex;   ///< Body: roughness map.
     Texture          m_sciFiToadBodyAOTex;          ///< Body: ambient occlusion map.
     MaterialInstance m_sciFiToadBodyMaterialInstance;
+    MaterialInstance* m_sciFiToadBodySlotMaterial = &m_sciFiToadBodyMaterialInstance; ///< Ver m_kirbySlotMaterial.
 
     Texture          m_sciFiToadGlassAlbedoTex;     ///< Glass: base color.
     Texture          m_sciFiToadGlassRoughnessTex;  ///< Glass: roughness map.
     MaterialInstance m_sciFiToadGlassMaterialInstance;
+    MaterialInstance* m_sciFiToadGlassSlotMaterial = &m_sciFiToadGlassMaterialInstance; ///< Ver m_kirbySlotMaterial.
 
     Texture          m_sciFiToadHeadAlbedoTex;      ///< Head/Eyes: base color.
     Texture          m_sciFiToadHeadNormalTex;      ///< Head/Eyes: normal map.
     Texture          m_sciFiToadHeadAOTex;          ///< Head/Eyes: ambient occlusion map.
     MaterialInstance m_sciFiToadHeadMaterialInstance; ///< Compartido por los submeshes Head_low y Eyes_low (mismo atlas de textura).
+    MaterialInstance* m_sciFiToadHeadSlotMaterial = &m_sciFiToadHeadMaterialInstance; ///< Ver m_kirbySlotMaterial.
+
+    /**
+     * @brief Pool de texturas cargadas desde el Material Editor (UserInterface::materialEditor).
+     * @details `std::deque`, no `std::vector`: los `MaterialInstance` guardan `Texture*`
+     * crudos sin ownership, y un `push_back`/`emplace_back` en los extremos de un `deque`
+     * nunca invalida referencias a elementos ya existentes (a diferencia de `vector`, que
+     * puede reallocar todo el buffer al crecer).
+     */
+    std::deque<Texture> m_editorLoadedTextures;
+
+    /// Pool de MaterialInstance creados desde cero en el Material Editor. std::deque por la
+    /// misma razón que m_editorLoadedTextures: MaterialRenderSlot::target guarda MaterialInstance*
+    /// crudos hacia elementos de este pool, que nunca deben invalidarse al crecer.
+    std::deque<MaterialInstance> m_editorCreatedMaterials;
+
+    /// Lista persistente de materiales editables en el Material Editor (5 built-in +
+    /// los creados ahi). Se puebla una vez en init(); el editor le hace push_back directo
+    /// al crear un material nuevo (no se reconstruye cada frame).
+    std::vector<MaterialEditorEntry> m_materialEditorEntries;
+
+    /// Slots de render fijos a los que el Material Editor puede asignar cualquier entrada
+    /// de m_materialEditorEntries (ver MaterialRenderSlot). Se puebla una vez en init().
+    std::vector<MaterialRenderSlot> m_materialRenderSlots;
 
     // Parámetros de cámara free-fly (estilo Unreal/Roblox)
     float    m_camYawDeg = 0.0f;          ///< Ángulo de giro horizontal (orientación, no pivote).

@@ -259,22 +259,27 @@ HRESULT BaseApp::init()
                 // (Body/Glass/Head). materialSlot == indice en m_modelLoader.meshes (ver
                 // Mesh::buildFrom), asi que se puede recuperar el nombre original por indice.
                 // Los MaterialInstance en si se configuran mas abajo (texturas del modelo).
+                // Bucket (0=Body/1=Glass/2=Head), no MaterialInstance* directo: asi el Material
+                // Editor puede reasignar que MaterialInstance respalda cada bucket en tiempo real
+                // (ver m_sciFiToadBodySlotMaterial/... y su uso en render()) sin tener que volver
+                // a analizar los nombres de nodo FBX.
                 m_sciFiToadSubmeshMaterials.assign(m_sciFiToadMesh.getSubmeshes().size(), nullptr);
+                m_sciFiToadSubmeshBucket.assign(m_sciFiToadMesh.getSubmeshes().size(), 0);
                 for (size_t i = 0; i < m_sciFiToadMesh.getSubmeshes().size(); ++i) {
                     unsigned int slot = m_sciFiToadMesh.getSubmeshes()[i].materialSlot;
                     std::string nodeName = (slot < m_modelLoader.meshes.size()) ? m_modelLoader.meshes[slot].m_name : std::string();
                     std::string lowerName = nodeName;
                     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
 
-                    MaterialInstance* submeshMat = &m_sciFiToadBodyMaterialInstance; // fallback: Body
+                    int bucket = 0; // fallback: Body
                     if (lowerName.find("glass") != std::string::npos) {
-                        submeshMat = &m_sciFiToadGlassMaterialInstance; // incluye "GlassHead" (visor transparente)
+                        bucket = 1; // incluye "GlassHead" (visor transparente)
                     } else if (lowerName.find("eye") != std::string::npos) {
-                        submeshMat = &m_sciFiToadHeadMaterialInstance; // Eyes_low comparte atlas con Head (BC/N/AO)
+                        bucket = 2; // Eyes_low comparte atlas con Head (BC/N/AO)
                     } else if (lowerName.find("head") != std::string::npos) {
-                        submeshMat = &m_sciFiToadHeadMaterialInstance;
+                        bucket = 2;
                     }
-                    m_sciFiToadSubmeshMaterials[i] = submeshMat;
+                    m_sciFiToadSubmeshBucket[i] = bucket;
                     LOG_MESSAGE("BaseApp", "init", "Sci-Fi Toad submesh[" + std::to_string(i) + "] node='" + nodeName + "'");
                 }
 
@@ -338,7 +343,7 @@ HRESULT BaseApp::init()
         else
             LOG_WARNING("BaseApp", "init", "Plane texture (piedra): NOT FOUND — using default checkerboard");
 
-        // Coloca el suelo a Y = -5 (donde tienes al personaje)
+        // Coloca el suelo a Y = -5
         m_APlane->getComponent<Transform>()->setTransform(
             EU::Vector3(0.0f, -5.0f, 0.0f),   // posición
             EU::Vector3(0.0f, 0.0f, 0.0f),   // rotación
@@ -411,6 +416,15 @@ HRESULT BaseApp::init()
         m_defaultMaterial.setDomain(MaterialDomain::Opaque);
         m_defaultMaterial.setBlendMode(BlendMode::Opaque);
 
+        // Material "Masked": mismos render states que el opaco (tambien pasa por el
+        // G-Buffer deferred, no por m_shaderProgram), solo cambia el dominio — es lo que
+        // activa el `clip(albedo.a - AlphaCutoff)` de DeferredGBuffer.hlsl:105.
+        m_maskedMaterial.setRasterizerState(&m_defaultRasterizer);
+        m_maskedMaterial.setDepthStencilState(&m_defaultDepthStencil);
+        m_maskedMaterial.setSamplerState(&m_defaultSampler);
+        m_maskedMaterial.setDomain(MaterialDomain::Masked);
+        m_maskedMaterial.setBlendMode(BlendMode::Opaque);
+
         // Material de transparencias (vidrio, etc.). El pass transparente del DeferredRenderer
         // (renderTransparentPass/renderForwardObject) es forward, no deferred, y necesita un
         // ShaderProgram propio del Material (material->getShader()) — se reusa m_shaderProgram,
@@ -476,6 +490,12 @@ HRESULT BaseApp::init()
             }
             if (SUCCEEDED(gR)) m_sciFiToadGlassMaterialInstance.setRoughness(&m_sciFiToadGlassRoughnessTex);
             else LOG_WARNING("BaseApp", "init", "Sci-Fi Toad Glass roughness map not found — skipping.");
+
+            // Sci-FIToad_Glass_BC.png es RGB puro (sin canal alpha) — sin este valor, BlendMode::Alpha
+            // no tendria ningun efecto visible porque el alpha muestreado siempre seria 1.0 (opaco).
+            // Se fija una sola vez aqui (no cada frame en render()) para que el Material Editor
+            // pueda editarlo despues sin que se revierta en el siguiente frame.
+            m_sciFiToadGlassMaterialInstance.getParams().baseColor.w = 0.35f;
 
             // Head/Eyes: BC+N+AO. SSS existe en disco pero no se usa todavia — el shader
             // (DeferredGBuffer.hlsl) no tiene un slot/termino de subsurface scattering.
@@ -544,6 +564,24 @@ HRESULT BaseApp::init()
         m_device.m_device,
         m_deviceContext.m_deviceContext
     );
+
+    // 15) Material Editor: lista persistente de materiales editables + slots de render
+    // asignables. Se puebla una sola vez aquí (no cada frame) — el editor le hace push_back
+    // directo a m_materialEditorEntries al crear un material nuevo (ver UserInterface::materialEditor).
+    m_materialEditorEntries = {
+        { "Kirby",             &m_kirbyMaterialInstance },
+        { "Plane",             &m_planeMaterialInstance },
+        { "SciFiToad - Body",  &m_sciFiToadBodyMaterialInstance },
+        { "SciFiToad - Glass", &m_sciFiToadGlassMaterialInstance },
+        { "SciFiToad - Head",  &m_sciFiToadHeadMaterialInstance },
+    };
+    m_materialRenderSlots = {
+        { "Kirby",             &m_kirbySlotMaterial },
+        { "Plane",             &m_planeSlotMaterial },
+        { "SciFiToad - Body",  &m_sciFiToadBodySlotMaterial },
+        { "SciFiToad - Glass", &m_sciFiToadGlassSlotMaterial },
+        { "SciFiToad - Head",  &m_sciFiToadHeadSlotMaterial },
+    };
 
     return S_OK;
 }
@@ -787,6 +825,14 @@ void BaseApp::update()
     ImGui::SetNextWindowPos(ImVec2(0.0f, topMargin), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(kLeftPanelWidth, hierarchyH), ImGuiCond_FirstUseEver);
     m_userInterface.outliner(m_actors);
+
+    // Material Editor: edita en vivo los MaterialInstance reales que este mismo metodo
+    // asigna por nombre a los RenderObject de la escena (ver bloque "if (name == ...)"
+    // mas abajo) — la reasignación de qué MaterialInstance usa cada slot pasa por la
+    // indirección de puntero en m_materialRenderSlots, no por tocar ese if/else.
+    m_userInterface.materialEditor(m_materialEditorEntries, m_materialRenderSlots,
+        m_device, m_editorLoadedTextures, m_editorCreatedMaterials,
+        m_defaultMaterial, m_transparentMaterial, m_maskedMaterial);
 
     // Creación de Light Actors desde el botón "+" del outliner (Hierarchy).
     if (m_userInterface.requestedLightType >= 0)
@@ -1485,32 +1531,69 @@ void BaseApp::render() {
         m_renderScene.lights.push_back(lightComp->resolve(*actor->getComponent<Transform>()));
     }
 
-    // Resaltado visual del actor seleccionado (picking del viewport): tinte calido sobre
-    // el BaseColor de su MaterialInstance. Se recalcula cada frame (no hace falta "revertir"
-    // explicitamente: el actor no seleccionado simplemente recibe el tinte normal).
+    // Resaltado visual del actor seleccionado (picking del viewport): tinte calido aplicado
+    // solo en el draw (RenderObject::tint, ver DeferredRenderer), nunca escrito en el
+    // MaterialParams del MaterialInstance — asi el BaseColor que edita el Material Editor
+    // persiste entre frames en vez de revertirse al tinte "normal" cada vez.
     Actor* selectedActorPtr = nullptr;
     if (m_userInterface.selectedActorIndex >= 0 &&
         m_userInterface.selectedActorIndex < (int)m_actors.size() &&
         !m_actors[m_userInterface.selectedActorIndex].isNull()) {
         selectedActorPtr = m_actors[m_userInterface.selectedActorIndex].get();
     }
-    const XMFLOAT4 kNormalTint   = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    const XMFLOAT4 kSelectedTint = XMFLOAT4(1.6f, 1.3f, 0.3f, 1.0f); // realce calido/amarillo
-    // Sci-FIToad_Glass_BC.png es RGB puro (sin canal alpha) — sin este valor, BlendMode::Alpha
-    // no tendria ningun efecto visible porque el alpha muestreado siempre seria 1.0 (opaco).
-    const float kGlassAlpha = 0.35f;
+    const XMFLOAT3 kNormalTint   = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    const XMFLOAT3 kSelectedTint = XMFLOAT3(1.6f, 1.3f, 0.3f); // realce calido/amarillo
+
+    /**
+     * @brief true si el material único del objeto, o alguno de sus materiales por submesh,
+     * es `MaterialDomain::Transparent` — decide si el objeto también debe existir en
+     * `transparentObjects` además de `opaqueObjects` (ver uso más abajo).
+     * @note No es exclusivo de SciFiToad/Glass: cualquier material creado como
+     * "Transparent" en el Material Editor y asignado a cualquier slot (Kirby, Plane, etc.)
+     * necesita este mismo tratamiento para no volverse invisible.
+     * @note [GameDev] Antes de esta función, solo el actor SciFiToad se agregaba a
+     * `transparentObjects` (hardcodeado: `if (submeshMats) { ... }`), porque era el único
+     * actor que originalmente tenía una parte transparente (el vidrio). Cuando el Material
+     * Editor hizo posible asignar un material Transparent a CUALQUIER slot (Kirby, Plane),
+     * ese hardcodeo dejó de alcanzar: el pase opaco salta cualquier submesh Transparent
+     * (`if (domain == Transparent) continue;` en `DeferredRenderer::renderGeometryObject`),
+     * así que un objeto que solo existe en `opaqueObjects` y nunca en `transparentObjects`
+     * no se dibuja en NINGÚN pase — desaparece por completo. La lección: cuando una
+     * condición hardcodeada para un caso ("si es SciFiToad") en realidad depende de una
+     * propiedad más general ("si tiene un material Transparent"), conviene generalizarla en
+     * cuanto un segundo caso la necesite, en vez de ir agregando `|| name == "OtroActor"`.
+     */
+    auto hasTransparentMaterial = [](const RenderObject& o) {
+        auto isTransparent = [](MaterialInstance* mi) {
+            return mi && mi->getMaterial() && mi->getMaterial()->getDomain() == MaterialDomain::Transparent;
+        };
+        if (isTransparent(o.materialInstance)) return true;
+        for (MaterialInstance* mi : o.materialInstances) {
+            if (isTransparent(mi)) return true;
+        }
+        return false;
+    };
 
     // Plano — siempre usa m_APlane directamente (sin depender de su índice en m_actors)
     if (!m_APlane.isNull()) {
-        m_planeMaterialInstance.getParams().baseColor =
-            (m_APlane.get() == selectedActorPtr) ? kSelectedTint : kNormalTint;
-
         RenderObject obj;
         obj.mesh             = &m_planeMeshGpu;
-        obj.materialInstance = &m_planeMaterialInstance;
+        obj.materialInstance = m_planeSlotMaterial;
         obj.world            = m_APlane->getComponent<Transform>()->matrix;
         obj.castShadow       = false;
+        obj.tint             = (m_APlane.get() == selectedActorPtr) ? kSelectedTint : kNormalTint;
         m_renderScene.opaqueObjects.push_back(obj);
+
+        // Ver nota junto a hasTransparentMaterial: el pass opaco salta materiales Transparent
+        // (DeferredRenderer::renderGeometryObject), asi que sin esto el objeto desaparecia.
+        if (hasTransparentMaterial(obj)) {
+            RenderObject transparentObj = obj;
+            transparentObj.transparent = true;
+            EU::Vector3 actorPos = m_APlane->getComponent<Transform>()->getPosition();
+            EU::Vector3 camPos   = m_camera.getPosition();
+            transparentObj.distanceToCamera = (actorPos - camPos).magnitude();
+            m_renderScene.transparentObjects.push_back(transparentObj);
+        }
     }
     // Modelos FBX — buscamos por nombre para obtener la world matrix correcta
     for (auto& actor : m_actors) {
@@ -1522,16 +1605,18 @@ void BaseApp::render() {
         if (name == "Kirby") {
             if (m_kirbyMesh.getSubmeshes().empty()) continue;
             mesh = &m_kirbyMesh;
-            mat  = &m_kirbyMaterialInstance;
-            mat->getParams().baseColor = (actor.get() == selectedActorPtr) ? kSelectedTint : kNormalTint;
+            mat  = m_kirbySlotMaterial;
         } else if (name == "SciFiToad") {
             if (m_sciFiToadMesh.getSubmeshes().empty()) continue;
             mesh = &m_sciFiToadMesh;
+            // Reconstruido cada frame (barato: unos pocos submeshes) a partir del bucket fijo
+            // por nodo FBX y los tres *SlotMaterial, que el Material Editor puede reasignar.
+            MaterialInstance* buckets[3] = { m_sciFiToadBodySlotMaterial, m_sciFiToadGlassSlotMaterial, m_sciFiToadHeadSlotMaterial };
+            for (size_t i = 0; i < m_sciFiToadSubmeshMaterials.size(); ++i) {
+                int bucket = (i < m_sciFiToadSubmeshBucket.size()) ? m_sciFiToadSubmeshBucket[i] : 0;
+                m_sciFiToadSubmeshMaterials[i] = buckets[bucket >= 0 && bucket < 3 ? bucket : 0];
+            }
             submeshMats = &m_sciFiToadSubmeshMaterials;
-            const XMFLOAT4& tint = (actor.get() == selectedActorPtr) ? kSelectedTint : kNormalTint;
-            m_sciFiToadBodyMaterialInstance.getParams().baseColor  = tint;
-            m_sciFiToadGlassMaterialInstance.getParams().baseColor = XMFLOAT4(tint.x, tint.y, tint.z, kGlassAlpha);
-            m_sciFiToadHeadMaterialInstance.getParams().baseColor  = tint;
         } else {
             continue;
         }
@@ -1541,21 +1626,21 @@ void BaseApp::render() {
         if (submeshMats) obj.materialInstances = *submeshMats;
         obj.world            = actor->getComponent<Transform>()->matrix;
         obj.castShadow       = true;
+        obj.tint             = (actor.get() == selectedActorPtr) ? kSelectedTint : kNormalTint;
         m_renderScene.opaqueObjects.push_back(obj);
 
-        // El submesh Glass es MaterialDomain::Transparent (m_transparentMaterial); el pass
-        // opaco lo salta automaticamente (ver DeferredRenderer::renderGeometryObject) y el
-        // pass transparente (forward, despues del lighting) solo dibuja submeshes cuyo
-        // material sea Transparent (ver renderForwardObject) — asi que el mismo objeto debe
-        // existir tambien en transparentObjects para que Glass aparezca en algun pass.
-        if (submeshMats) {
+        // Ver nota junto a hasTransparentMaterial: cualquier submesh (o el material unico)
+        // en MaterialDomain::Transparent — Glass por defecto, o cualquier material creado
+        // como "Transparent" y asignado aqui desde el Material Editor — necesita que este
+        // mismo RenderObject exista tambien en transparentObjects, o el pass opaco lo salta
+        // (getDomain()==Transparent) y nunca llega a dibujarse en ningun pass.
+        if (hasTransparentMaterial(obj)) {
             RenderObject transparentObj = obj;
-            transparentObj.castShadow  = false; // el vidrio no proyecta sombra opaca
+            transparentObj.castShadow  = false; // lo transparente no proyecta sombra opaca
             transparentObj.transparent = true;
             EU::Vector3 actorPos = actor->getComponent<Transform>()->getPosition();
             EU::Vector3 camPos   = m_camera.getPosition();
-            float dx = actorPos.x - camPos.x, dy = actorPos.y - camPos.y, dz = actorPos.z - camPos.z;
-            transparentObj.distanceToCamera = sqrtf(dx * dx + dy * dy + dz * dz);
+            transparentObj.distanceToCamera = (actorPos - camPos).magnitude();
             m_renderScene.transparentObjects.push_back(transparentObj);
         }
     }

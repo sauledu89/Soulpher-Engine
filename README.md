@@ -26,6 +26,30 @@ El **Parcial 1** dejó la arquitectura del Deferred Renderer construida pero sin
 
 ---
 
+## Parcial 3 — Material Editor
+
+Herramienta complementaria in-engine (ImGui) para crear y editar materiales PBR **en vivo**
+— parámetros y texturas, sin recompilar — inspirada en el Material Instance Editor de Unreal
+Engine, y asignarlos a los objetos de la escena demo sin tocar el wiring hardcodeado del
+render loop.
+
+- **Crear materiales desde cero**: nombre, dominio (Opaque / Transparent / Masked).
+- **Editar en vivo** los 7 parámetros de `CBPerMaterial` (BaseColor, Metallic, Roughness,
+  AO, NormalScale, EmissiveStrength, AlphaCutoff), con efecto inmediato en el viewport.
+- **Cargar/quitar texturas** por slot (Albedo/Normal/Metallic/Roughness/AO/Emissive) con
+  thumbnail en vivo.
+- **Asignar** cualquier material (built-in o creado en el editor) a cualquiera de los 5
+  "huecos" de render de la demo (Kirby, Plano, SciFiToad Body/Glass/Head), vía un patrón de
+  indirección de punteros equivalente a los *Material Slots* de Unreal.
+- **Borrar** materiales creados en el editor, bloqueado si el material sigue asignado a un
+  "hueco" de render.
+
+Documentación técnica completa (investigación, arquitectura, decisiones de diseño,
+limitaciones como caminos de escalabilidad y pruebas de funcionamiento):
+**[`docs/MaterialEditor.md`](docs/MaterialEditor.md)**.
+
+---
+
 ## Características implementadas y funcionales
 
 ### Subsistemas base

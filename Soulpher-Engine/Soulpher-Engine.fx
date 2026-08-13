@@ -98,10 +98,8 @@ cbuffer CBPerMaterial : register(b2)
     float  AlphaCutoff;
     float  _mpad0;
     float  _mpad1;
-    float  _mpad2;
-    float  _mpad3;
-    float  _mpad4;
-    float  _mpad5;
+    float2 UVTiling;    // Repeticiones de textura en U/V.
+    float2 UVOffset;    // Desplazamiento de UV tras el tiling — mismo layout binario que los _mpad2-_mpad5 que reemplaza.
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +272,7 @@ float4 PS(PS_INPUT input) : SV_Target
     // Shadow factor PCF 3x3
     float shadowFactor = ComputeShadow(input.ShadowPosH);
 
-    float4 albedo = txDiffuse.Sample(samLinear, input.Tex) * BaseColor;
+    float4 albedo = txDiffuse.Sample(samLinear, input.Tex * UVTiling + UVOffset) * BaseColor;
     // Ambient siempre visible; diffuse y specular atenuados por la sombra
     float3 color  = ambient * albedo.rgb
                   + shadowFactor * (diffuse * albedo.rgb + specular);

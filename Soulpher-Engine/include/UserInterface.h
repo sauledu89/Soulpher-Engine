@@ -48,12 +48,56 @@
 #include "imgui_internal.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
+#include <deque>
 
 class Window;
 class SwapChain;
 class Texture;
 class Actor;
 class ModelComponent;
+class Device;
+class Material;
+class MaterialInstance;
+
+/**
+ * @struct MaterialEditorEntry
+ * @brief Une un nombre visible en el editor con un `MaterialInstance*` editable: uno de
+ * los 5 built-in que `BaseApp` posee (Kirby, Plane, SciFiToad-Body/Glass/Head) o uno
+ * creado en el propio editor (`materialPool` en `materialEditor()`).
+ * @note `instance` puede cambiar en tiempo de ejecución: cuando el botón "Assign" del
+ * editor redirige un `MaterialRenderSlot` a otro material, también reescribe la entrada
+ * de este vector cuyo `name` coincide con la etiqueta del slot — así la fila de la lista
+ * ("Kirby") siempre representa el material que de verdad se está dibujando, no el que se
+ * dibujaba originalmente.
+ */
+struct MaterialEditorEntry {
+    std::string       name;      ///< Nombre mostrado en la lista del editor (ej. "SciFiToad - Body").
+    MaterialInstance* instance;  ///< MaterialInstance actualmente asociado a esta fila (no ownership).
+};
+
+/**
+ * @struct MaterialRenderSlot
+ * @brief Uno de los "huecos" fijos del render loop de `BaseApp` (Kirby, Plane,
+ * SciFiToad-Body/Glass/Head) que puede recibir cualquier `MaterialInstance` del editor.
+ * @details `target` es la dirección del puntero que `BaseApp` realmente bindea cada
+ * frame (ej. `&m_kirbySlotMaterial`) — reasignar `*target` en el editor cambia, sin
+ * ningún otro wiring, qué `MaterialInstance` usa ese actor/submesh en el siguiente frame.
+ *
+ * @note [GameDev] `target` es un `MaterialInstance**` — un puntero al puntero que
+ * `BaseApp` realmente lee cada frame — en vez de, por ejemplo, un simple índice. Es el
+ * mismo truco de indirección que usa un `Material Instance` de Unreal Engine: el mesh en
+ * la escena no referencia "el material X" directamente, referencia "lo que sea que esta
+ * ranura apunte ahora", y el editor solo cambia el contenido de la ranura. La ventaja es
+ * que reasignar un slot es una escritura de una línea (`*target = inst;`) sin tener que
+ * tocar el código que arma la escena cada frame; la desventaja es que el compilador no
+ * puede verificar que `target` siempre apunte a algo vivo — ese invariante ("siempre
+ * apunta a un miembro de `BaseApp` que existe mientras exista `BaseApp`") queda documentado
+ * aquí, no forzado por el tipo.
+ */
+struct MaterialRenderSlot {
+    std::string        label;   ///< Nombre mostrado en el combo de asignación (ej. "SciFiToad - Glass").
+    MaterialInstance** target;  ///< Dirección del MaterialInstance* de BaseApp que respalda este slot.
+};
 
 /**
  * @class UserInterface
@@ -222,6 +266,48 @@ public:
      * ventana colapsable, independiente de "Lighting" (antes vivía anidado ahí por error).
      */
     void interfacePanel();
+
+    /**
+     * @brief Editor de materiales in-engine: edita en vivo los `MaterialInstance` que
+     * `BaseApp` ya posee y bindea cada frame, crea materiales nuevos desde cero, y permite
+     * asignar cualquier material (built-in o creado aquí) a cualquiera de los slots de
+     * render fijos que expone `BaseApp` (`renderSlots`) — sin tocar el `if (name ==
+     * "Kirby")` hardcodeado de `BaseApp::render()`, gracias a la indirección de puntero
+     * que ya vive detrás de cada `MaterialRenderSlot::target`.
+     * @param materials Lista persistente de materiales editables (propiedad de `BaseApp`):
+     *                  los 5 built-in (Kirby, Plane, SciFiToad Body/Glass/Head) más los
+     *                  que el usuario cree con el botón "Create" de este panel.
+     * @param renderSlots Los slots de render fijos a los que se puede asignar cualquier
+     *                    entrada de `materials` (ver `MaterialRenderSlot`).
+     * @param device Dispositivo Direct3D, necesario para cargar una textura nueva desde
+     *               disco cuando el usuario la asigna a un slot.
+     * @param texturePool Pool de texturas cargadas por el editor, propiedad de `BaseApp`.
+     *                    Es un `std::deque` (no `std::vector`) a propósito: los
+     *                    `MaterialInstance` guardan `Texture*` crudos sin ownership, y un
+     *                    `push_back`/`emplace_back` en los extremos de un `deque` nunca
+     *                    invalida referencias a elementos ya existentes (a diferencia de
+     *                    `vector`, que puede reallocar todo el buffer).
+     * @param materialPool Pool de `MaterialInstance` creados desde cero en este panel,
+     *                     propiedad de `BaseApp`. También `std::deque` por la misma razón
+     *                     que `texturePool`: `MaterialRenderSlot::target` guarda punteros
+     *                     crudos a elementos de este pool.
+     * @param defaultMaterial `Material` base (Opaque) asignado a los materiales nuevos.
+     * @param transparentMaterial `Material` base (Transparent/Alpha) asignado a los
+     *                            materiales nuevos marcados como "Transparent" al crearlos.
+     * @param maskedMaterial `Material` base (Opaque + `MaterialDomain::Masked`) asignado a
+     *                       los materiales nuevos marcados como "Masked" al crearlos — es
+     *                       el único dominio para el que `DeferredGBuffer.hlsl` aplica
+     *                       `clip(albedo.a - AlphaCutoff)`, así que el slider "Alpha
+     *                       Cutoff" del editor solo tiene efecto visible en estos.
+     */
+    void materialEditor(std::vector<MaterialEditorEntry>& materials,
+        std::vector<MaterialRenderSlot>& renderSlots,
+        Device& device,
+        std::deque<Texture>& texturePool,
+        std::deque<MaterialInstance>& materialPool,
+        Material& defaultMaterial,
+        Material& transparentMaterial,
+        Material& maskedMaterial);
 
 public:
     int selectedActorIndex = -1; ///< Índice del actor actualmente seleccionado.

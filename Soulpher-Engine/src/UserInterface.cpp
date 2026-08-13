@@ -32,9 +32,12 @@
 #include "Window.h"
 #include "SwapChain.h"
 #include "Texture.h"
+#include "Device.h"
 #include "MeshComponent.h"
 #include "ECS\\Actor.h"
 #include "ECS\\LightComponent.h"
+#include "Rendering\\MaterialInstance.h"
+#include "Rendering\\Material.h"
 
     UserInterface::UserInterface() {}
 UserInterface::~UserInterface() {}
@@ -1135,5 +1138,357 @@ void UserInterface::outliner(const std::vector<EU::TSharedPointer<Actor>>& actor
         }
     }
 
+    ImGui::End();
+}
+
+namespace {
+    /**
+     * @enum MaterialTextureSlot
+     * @brief Los seis slots de textura que expone `MaterialInstance` — solo se usa dentro
+     * de `materialEditor()` para no repetir el mismo switch seis veces.
+     */
+    enum class MaterialTextureSlot { Albedo, Normal, Metallic, Roughness, AO, Emissive };
+
+    /** @brief `MaterialInstance::get{Albedo,Normal,...}()` elegido por `slot` en runtime. */
+    Texture* materialEditorGetSlot(MaterialInstance* inst, MaterialTextureSlot slot) {
+        switch (slot) {
+        case MaterialTextureSlot::Albedo:    return inst->getAlbedo();
+        case MaterialTextureSlot::Normal:    return inst->getNormal();
+        case MaterialTextureSlot::Metallic:  return inst->getMetallic();
+        case MaterialTextureSlot::Roughness: return inst->getRoughness();
+        case MaterialTextureSlot::AO:        return inst->getAO();
+        case MaterialTextureSlot::Emissive:  return inst->getEmissive();
+        }
+        return nullptr;
+    }
+
+    /** @brief `MaterialInstance::set{Albedo,Normal,...}(tex)` elegido por `slot` en runtime. */
+    void materialEditorSetSlot(MaterialInstance* inst, MaterialTextureSlot slot, Texture* tex) {
+        switch (slot) {
+        case MaterialTextureSlot::Albedo:    inst->setAlbedo(tex);    break;
+        case MaterialTextureSlot::Normal:    inst->setNormal(tex);    break;
+        case MaterialTextureSlot::Metallic:  inst->setMetallic(tex);  break;
+        case MaterialTextureSlot::Roughness: inst->setRoughness(tex); break;
+        case MaterialTextureSlot::AO:        inst->setAO(tex);        break;
+        case MaterialTextureSlot::Emissive:  inst->setEmissive(tex);  break;
+        }
+    }
+
+    const char* materialEditorSlotLabel(MaterialTextureSlot slot) {
+        switch (slot) {
+        case MaterialTextureSlot::Albedo:    return "Albedo";
+        case MaterialTextureSlot::Normal:    return "Normal";
+        case MaterialTextureSlot::Metallic:  return "Metallic";
+        case MaterialTextureSlot::Roughness: return "Roughness";
+        case MaterialTextureSlot::AO:        return "AO";
+        case MaterialTextureSlot::Emissive:  return "Emissive";
+        }
+        return "";
+    }
+}
+
+/**
+ * @copydoc UserInterface::materialEditor
+ */
+void UserInterface::materialEditor(std::vector<MaterialEditorEntry>& materials,
+    std::vector<MaterialRenderSlot>& renderSlots,
+    Device& device,
+    std::deque<Texture>& texturePool,
+    std::deque<MaterialInstance>& materialPool,
+    Material& defaultMaterial,
+    Material& transparentMaterial,
+    Material& maskedMaterial) {
+
+    static int   s_selectedMaterial = 0;
+    static char  s_loadPathBuf[260] = {};
+    // Slot pendiente de asignación: se fija al pulsar "Load..." en un slot y se consume
+    // en el popup "LoadMaterialTexture" que se abre justo después.
+    static MaterialInstance*   s_pendingInstance = nullptr;
+    static MaterialTextureSlot s_pendingSlot     = MaterialTextureSlot::Albedo;
+    static char  s_newMaterialName[128] = {};
+    static int   s_newMaterialDomain = 0; // 0=Opaque, 1=Transparent, 2=Masked — ver Create más abajo.
+    static int   s_targetRenderSlot = 0;
+    static int   s_renameSyncedIndex = -1; // último índice para el que s_renameBuf ya tiene el nombre cargado.
+    static char  s_renameBuf[128] = {};
+    // Las primeras 5 entradas de `materials` son siempre los materiales built-in (Kirby,
+    // Plane, SciFiToad Body/Glass/Head — ver BaseApp::init()), cuyo `name` el botón "Assign"
+    // usa para mantener sincronizada la lista con MaterialRenderSlot (ver ese botón más
+    // abajo). Permitir renombrarlas rompería esa sincronización por nombre; los materiales
+    // creados en el editor (índice >= esto) no tienen esa restricción.
+    constexpr int kBuiltInMaterialCount = 5;
+
+    ImGui::Begin("Material Editor");
+
+    if (materials.empty()) {
+        ImGui::TextDisabled("No hay materiales registrados.");
+        ImGui::End();
+        return;
+    }
+    if (s_selectedMaterial >= (int)materials.size()) s_selectedMaterial = 0;
+
+    ImGui::BeginChild("MaterialEditorList", ImVec2(200.0f, 0.0f), true);
+    for (int i = 0; i < (int)materials.size(); ++i) {
+        // "##i": nombres duplicados (dos materiales con el mismo nombre, nada lo impide)
+        // no deben colapsar al mismo ID de ImGui — sin el índice, colisionan hover/click
+        // entre ambas filas.
+        std::string rowId = materials[i].name + "##" + std::to_string(i);
+        if (ImGui::Selectable(rowId.c_str(), s_selectedMaterial == i)) {
+            s_selectedMaterial = i;
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::TextDisabled("New Material");
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputTextWithHint("##NewMaterialName", "Name...", s_newMaterialName, sizeof(s_newMaterialName));
+    // Combo en vez de RadioButton en fila: la lista de materiales mide solo 200px de ancho
+    // (ver MaterialEditorList mas abajo) y tres botones lado a lado no entraban — el
+    // tercero quedaba cortado/ilegible fuera del panel.
+    //
+    // [GameDev] Opaque/Transparent/Masked no son "grados de transparencia" en una escala —
+    // son TRES TÉCNICAS distintas para manejar alpha, cada una con su propio costo:
+    //  - Opaque:      alpha ignorado. Escribe profundidad, se ordena por material (no por
+    //                 distancia) en el G-Buffer — el camino más barato.
+    //  - Masked:      alpha "todo o nada" via clip(albedo.a - AlphaCutoff) en el shader del
+    //                 G-Buffer (DeferredGBuffer.hlsl:105) — cada píxel se descarta o se
+    //                 dibuja 100% opaco, así que SIGUE escribiendo profundidad y ordenándose
+    //                 por material. Sirve para hojas, rejillas, alambre de púas: bordes
+    //                 duros, no un fade suave.
+    //  - Transparent: alpha real via blending (SRC_ALPHA/INV_SRC_ALPHA). No escribe
+    //                 profundidad, necesita el pase forward aparte y ordenarse
+    //                 back-to-front por objeto (ver DeferredRenderer::buildQueues) — el
+    //                 camino más caro, y el único que da un fundido suave real.
+    // El slider "Alpha Cutoff" de más abajo solo tiene efecto en Masked; en Opaque y
+    // Transparent el shader lo ignora (por diseño, no por bug).
+    static const char* kNewMaterialDomainNames[] = { "Opaque", "Transparent", "Masked" };
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::Combo("##NewMaterialDomain", &s_newMaterialDomain, kNewMaterialDomainNames,
+        IM_ARRAYSIZE(kNewMaterialDomainNames));
+    // materialPool es std::deque: emplace_back nunca invalida los MaterialInstance* que
+    // ya haya repartido a otras entries o a MaterialRenderSlot::target (ver @copydoc).
+    if (ImGui::Button("Create", ImVec2(-1.0f, 0.0f)) && s_newMaterialName[0] != '\0') {
+        materialPool.emplace_back();
+        MaterialInstance& newMat = materialPool.back();
+        switch (s_newMaterialDomain) {
+        case 1:
+            newMat.setMaterial(&transparentMaterial);
+            // Sin esto, un material Transparent nuevo arranca en baseColor.a=1.0 (el
+            // default de MaterialParams) — visualmente indistinguible de uno opaco hasta
+            // que el usuario nota que hay que bajar el alpha a mano (ver nota en
+            // BaseApp::init() junto al 0.35f fijo del vidrio de SciFiToad).
+            newMat.getParams().baseColor.w = 0.5f;
+            break;
+        case 2:
+            newMat.setMaterial(&maskedMaterial);
+            break;
+        default:
+            newMat.setMaterial(&defaultMaterial);
+            break;
+        }
+        materials.push_back({ std::string(s_newMaterialName), &newMat });
+        s_selectedMaterial  = (int)materials.size() - 1;
+        s_newMaterialName[0] = '\0';
+        s_newMaterialDomain = 0;
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    ImGui::BeginChild("MaterialEditorDetail", ImVec2(0.0f, 0.0f), true);
+    MaterialInstance* inst = materials[s_selectedMaterial].instance;
+    if (inst == nullptr) {
+        ImGui::TextDisabled("MaterialInstance nulo.");
+    }
+    else {
+        MaterialParams& params = inst->getParams();
+
+        if (s_selectedMaterial >= kBuiltInMaterialCount) {
+            // Material creado en el editor: nombre editable. El buffer se resincroniza solo
+            // cuando cambia la selección (no cada frame) para no pisar lo que el usuario esta
+            // escribiendo mientras edita.
+            if (s_renameSyncedIndex != s_selectedMaterial) {
+                strncpy_s(s_renameBuf, materials[s_selectedMaterial].name.c_str(), sizeof(s_renameBuf) - 1);
+                s_renameSyncedIndex = s_selectedMaterial;
+            }
+            ImGui::SetNextItemWidth(180.0f);
+            if (ImGui::InputText("##RenameMaterial", s_renameBuf, sizeof(s_renameBuf))) {
+                materials[s_selectedMaterial].name = s_renameBuf;
+            }
+        }
+        else {
+            // Built-in: nombre fijo (identifica el slot de render, ver nota junto a
+            // kBuiltInMaterialCount).
+            ImGui::Text("%s", materials[s_selectedMaterial].name.c_str());
+        }
+        ImGui::SameLine();
+        // materialPool es std::deque: emplace_back nunca invalida los MaterialInstance* que
+        // ya haya repartido a otras entries o a MaterialRenderSlot::target (ver @copydoc de
+        // esta función) — seguro duplicar aunque el pool crezca despues.
+        if (ImGui::Button("Duplicate")) {
+            materialPool.emplace_back(*inst); // copy ctor: mismo Material*, mismas Texture*, copia de MaterialParams.
+            MaterialInstance& dup = materialPool.back();
+            materials.push_back({ materials[s_selectedMaterial].name + " (Copy)", &dup });
+            s_selectedMaterial = (int)materials.size() - 1;
+        }
+
+        // Solo materiales creados en el editor son borrables (ver nota de
+        // kBuiltInMaterialCount): los built-in identifican un MaterialRenderSlot por nombre
+        // y borrarlos rompería esa sincronización.
+        if (s_selectedMaterial >= kBuiltInMaterialCount) {
+            ImGui::SameLine();
+            // No se borra el MaterialInstance de materialPool (std::deque): un erase en medio
+            // invalidaria TODOS los punteros ya repartidos a otras entries y a
+            // MaterialRenderSlot::target, no solo el borrado (ver @copydoc de esta funcion).
+            // Borrar solo la entry de `materials` es seguro y suficiente: el slot deja de
+            // aparecer en la lista editable; la instancia sigue viva en el pool, igual que
+            // cualquier otra nunca liberada.
+            bool inUse = false;
+            for (const MaterialRenderSlot& slot : renderSlots) {
+                if (*(slot.target) == inst) { inUse = true; break; }
+            }
+            if (inUse) {
+                ImGui::TextDisabled("Delete");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Reasigna este material desde \"Assign to Render Slot\" a otro material antes de borrarlo.");
+                }
+            }
+            else if (ImGui::Button("Delete")) {
+                materials.erase(materials.begin() + s_selectedMaterial);
+                if (s_selectedMaterial >= (int)materials.size()) {
+                    s_selectedMaterial = (int)materials.size() - 1;
+                }
+                s_renameSyncedIndex = -1; // fuerza resync de s_renameBuf con la nueva seleccion.
+                ImGui::EndChild();
+                ImGui::End();
+                return;
+            }
+        }
+        ImGui::Separator();
+
+        ImGui::ColorEdit4("Base Color", &params.baseColor.x);
+        ImGui::SliderFloat("Metallic", &params.metallic, 0.0f, 1.0f);
+        ImGui::SliderFloat("Roughness", &params.roughness, 0.0f, 1.0f);
+        ImGui::SliderFloat("AO", &params.ao, 0.0f, 1.0f);
+        ImGui::SliderFloat("Normal Scale", &params.normalScale, 0.0f, 2.0f);
+        ImGui::SliderFloat("Emissive Strength", &params.emissiveStrength, 0.0f, 10.0f);
+        ImGui::SliderFloat("Alpha Cutoff", &params.alphaCutoff, 0.0f, 1.0f);
+        // Repeticiones de textura en U/V — multiplica las UVs del vértice en el shader
+        // (ver DeferredGBuffer.hlsl / Soulpher-Engine.fx), no las UVs propias de la malla.
+        // Si la malla ya trae tiling horneado (ej. el plano de suelo, en 6x6), esto se
+        // aplica ENCIMA de eso: el tiling efectivo es el del vértice multiplicado por esto.
+        ImGui::DragFloat2("UV Tiling", &params.uvTiling.x, 0.05f, 0.01f, 64.0f, "%.2f");
+        // Desplazamiento aplicado DESPUES del tiling — sin límite fijo, un patrón repetido
+        // "da la vuelta" naturalmente, así que desplazarlo mucho no rompe nada visualmente.
+        ImGui::DragFloat2("UV Offset", &params.uvOffset.x, 0.01f, 0.0f, 0.0f, "%.2f");
+
+        ImGui::Separator();
+        ImGui::Text("Texture Slots");
+
+        const MaterialTextureSlot slots[] = {
+            MaterialTextureSlot::Albedo,   MaterialTextureSlot::Normal,
+            MaterialTextureSlot::Metallic, MaterialTextureSlot::Roughness,
+            MaterialTextureSlot::AO,       MaterialTextureSlot::Emissive
+        };
+
+        for (MaterialTextureSlot slot : slots) {
+            Texture* tex = materialEditorGetSlot(inst, slot);
+            if (tex != nullptr && tex->srv() != nullptr) {
+                ImGui::Image((ImTextureID)tex->srv(), ImVec2(48.0f, 48.0f));
+            }
+            else {
+                ImGui::Dummy(ImVec2(48.0f, 48.0f));
+            }
+
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            ImGui::Text("%s", materialEditorSlotLabel(slot));
+            // Labels sufijados con el slot (no ImGui::PushID) para que cada boton tenga un ID
+            // unico por fila sin cambiar el ID stack en el que se abre el popup — OpenPopup()
+            // y BeginPopup() calculan el ID del popup contra el ID stack vigente en cada
+            // llamada, y deben coincidir para que el popup aparezca (ver nota mas abajo).
+            std::string loadButtonId = std::string("Load...##") + materialEditorSlotLabel(slot);
+            if (ImGui::Button(loadButtonId.c_str())) {
+                s_pendingInstance = inst;
+                s_pendingSlot     = slot;
+                s_loadPathBuf[0]  = '\0';
+                ImGui::OpenPopup("LoadMaterialTexture");
+            }
+            ImGui::SameLine();
+            std::string clearButtonId = std::string("Clear##") + materialEditorSlotLabel(slot);
+            if (ImGui::Button(clearButtonId.c_str())) {
+                materialEditorSetSlot(inst, slot, nullptr);
+            }
+            ImGui::EndGroup();
+        }
+
+        if (!renderSlots.empty()) {
+            ImGui::Separator();
+            ImGui::Text("Assign to Render Slot");
+            if (s_targetRenderSlot >= (int)renderSlots.size()) s_targetRenderSlot = 0;
+            ImGui::SetNextItemWidth(200.0f);
+            if (ImGui::BeginCombo("##TargetRenderSlot", renderSlots[s_targetRenderSlot].label.c_str())) {
+                for (int i = 0; i < (int)renderSlots.size(); ++i) {
+                    if (ImGui::Selectable(renderSlots[i].label.c_str(), s_targetRenderSlot == i)) {
+                        s_targetRenderSlot = i;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::SameLine();
+            // *(target) es el MaterialInstance* que BaseApp::render() bindea de verdad ese
+            // slot — reasignarlo aqui cambia el material visible en el viewport sin tocar
+            // el if/else por nombre de BaseApp::render() (ver @copydoc de esta funcion).
+            if (ImGui::Button("Assign")) {
+                *(renderSlots[s_targetRenderSlot].target) = inst;
+                // Mantiene sincronizada la lista de la izquierda: sin esto, la entry
+                // "built-in" cuyo nombre coincide con el slot reasignado (ej. "Kirby")
+                // queda apuntando al MaterialInstance original ya no bindeado a nada —
+                // seleccionarla y editarla despues no tendria ningun efecto visible, sin
+                // ningun aviso de por que.
+                const std::string& slotLabel = renderSlots[s_targetRenderSlot].label;
+                for (MaterialEditorEntry& entry : materials) {
+                    if (entry.name == slotLabel) {
+                        entry.instance = inst;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Popup compartido por todos los slots — s_pendingInstance/s_pendingSlot identifican
+    // a cuál se aplica el resultado (fijados por el botón "Load..." que lo abrió).
+    if (ImGui::BeginPopup("LoadMaterialTexture")) {
+        ImGui::Text("Load %s texture", materialEditorSlotLabel(s_pendingSlot));
+        ImGui::InputText("Path (sin extension)", s_loadPathBuf, sizeof(s_loadPathBuf));
+        ImGui::TextDisabled("Ej: ModelsFBX\\piedra");
+
+        // emplace_back en un deque nunca invalida Texture* ya entregados a otros
+        // MaterialInstance (ver nota de arquitectura en UserInterface::materialEditor).
+        auto loadAndAssign = [&](ExtensionType ext) {
+            if (s_pendingInstance == nullptr || s_loadPathBuf[0] == '\0') return;
+            texturePool.emplace_back();
+            Texture& newTex = texturePool.back();
+            HRESULT hr = newTex.init(device, s_loadPathBuf, ext);
+            if (SUCCEEDED(hr)) {
+                materialEditorSetSlot(s_pendingInstance, s_pendingSlot, &newTex);
+            }
+            else {
+                texturePool.pop_back();
+                LOG_ERROR("UserInterface", "materialEditor", "Failed to load texture from path");
+            }
+            ImGui::CloseCurrentPopup();
+            };
+
+        if (ImGui::Button("Load PNG")) loadAndAssign(PNG);
+        ImGui::SameLine();
+        if (ImGui::Button("Load JPG")) loadAndAssign(JPG);
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::EndChild();
     ImGui::End();
 }

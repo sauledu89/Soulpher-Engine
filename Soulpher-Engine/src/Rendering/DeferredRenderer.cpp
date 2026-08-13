@@ -294,6 +294,17 @@ DeferredRenderer::destroy() {
  * porque SÍ hay overdraw real: sin depth write, cada capa transparente debe componerse
  * sobre lo que ya está detrás, y dibujar en el orden equivocado produce blending incorrecto
  * (un vidrio rojo pintado antes que uno azul detrás se ve "al revés").
+ *
+ * @note [GameDev] Este back-to-front sort es "por objeto": un solo `distanceToCamera`
+ * representa a TODO un `RenderObject`, incluidas todas sus submallas. Es la técnica de
+ * transparencia más simple que existe (sorted/blended transparency) y es exactamente lo
+ * que falla cuando un objeto transparente no es una forma delgada/convexa (como un vidrio)
+ * sino una malla cerrada con varias partes (confirmado con Kirby durante el desarrollo del
+ * Material Editor: sus submallas internas, normalmente ocultas, se dibujan en orden de
+ * array — no de profundidad real — entre sí). El motor no implementa ninguna forma de
+ * "Order-Independent Transparency" (OIT) — depth peeling, per-pixel linked lists (A-buffer),
+ * ni siquiera un sort por submesh — que son las técnicas reales para resolver esto en
+ * geometría arbitraria; ver la limitación documentada al final de esta función.
  */
 void
 DeferredRenderer::buildQueues(RenderScene& scene, const Camera& camera) {
@@ -321,6 +332,18 @@ DeferredRenderer::buildQueues(RenderScene& scene, const Camera& camera) {
 		[](const RenderObject* lhs, const RenderObject* rhs) {
 			return lhs->distanceToCamera > rhs->distanceToCamera;
 		});
+
+	// LIMITACION CONOCIDA: este orden es por-objeto (un distanceToCamera para todo el
+	// RenderObject), no por-submesh ni por-triangulo. renderForwardObject dibuja las
+	// submallas de un mismo objeto en su orden de array, sin resolver profundidad entre
+	// ellas (m_transparentDepthStencil tiene DEPTH_WRITE_MASK_ZERO — necesario para que el
+	// blending funcione, pero significa que las propias partes del objeto dejan de
+	// ocluirse entre si). Para una forma simple/casi convexa (el vidrio de SciFiToad) esto
+	// no se nota; para una malla cerrada con varias partes (ej. Kirby, si se le asigna un
+	// material Transparent) las partes internas normalmente ocultas pueden dibujarse
+	// encima de las que deberian taparlas — confirmado manualmente durante el desarrollo
+	// del Material Editor. Arreglarlo de verdad requiere ordenar submallas (o triangulos)
+	// por objeto, no solo objetos entre si; queda como trabajo futuro, no un parche chico.
 }
 
 /**
@@ -626,33 +649,18 @@ DeferredRenderer::renderGeometryObject(DeviceContext& deviceContext, const Rende
 		m_perObjectBuffer.render(deviceContext, 1, 1, false);
 
 		materialInstance->bindTextures(deviceContext);
-		// bindTextures() deja sin enlazar (null) cualquier slot t0-t4 cuyo MaterialInstance no
-		// tenga esa textura. Sin un default, HLSL muestrea (0,0,0,0) para esos slots — el
-		// t0 (albedo) en particular rompe la detección de fondo del lighting pass. Se rellenan
-		// aquí con defaults neutros: blanco (1,1,1,1) para albedo/metallic/roughness/AO (para
-		// que "textura.r * escalarCB" quede igual al escalar cuando no hay mapa), y normal
-		// plana (0,0,1 tangent-space) para el normal map.
-		{
-			auto bindFallback = [&](UINT slot, Texture* tex, ID3D11ShaderResourceView* fallback) {
-				if (fallback && (!tex || !tex->srv())) {
-					deviceContext.m_deviceContext->PSSetShaderResources(slot, 1, &fallback);
-				}
-			};
-			bindFallback(0, materialInstance->getAlbedo(),    m_defaultWhiteSRV);
-			bindFallback(1, materialInstance->getNormal(),    m_defaultFlatNormalSRV);
-			bindFallback(2, materialInstance->getMetallic(),  m_defaultWhiteSRV);
-			bindFallback(3, materialInstance->getRoughness(), m_defaultWhiteSRV);
-			bindFallback(4, materialInstance->getAO(),        m_defaultWhiteSRV);
-		}
+		bindTextureFallbacks(deviceContext, materialInstance);
 
 		const MaterialParams& params = materialInstance->getParams();
-		m_cbPerMaterial.BaseColor = params.baseColor;
+		m_cbPerMaterial.BaseColor = computeTintedBaseColor(params, object.tint);
 		m_cbPerMaterial.Metallic = params.metallic;
 		m_cbPerMaterial.Roughness = params.roughness;
 		m_cbPerMaterial.AO = params.ao;
 		m_cbPerMaterial.NormalScale = params.normalScale;
 		m_cbPerMaterial.EmissiveStrength = params.emissiveStrength;
 		m_cbPerMaterial.AlphaCutoff = material->getDomain() == MaterialDomain::Masked ? params.alphaCutoff : 0.0f;
+		m_cbPerMaterial.UVTiling = params.uvTiling;
+		m_cbPerMaterial.UVOffset = params.uvOffset;
 		m_perMaterialBuffer.update(deviceContext, nullptr, 0, nullptr, &m_cbPerMaterial, 0, 0);
 		m_perMaterialBuffer.render(deviceContext, 2, 1, true);
 
@@ -838,15 +846,22 @@ DeferredRenderer::renderForwardObject(DeviceContext& deviceContext,
 		m_perObjectBuffer.render(deviceContext, 1, 1, true);
 
 		materialInstance->bindTextures(deviceContext);
+		// Mismo relleno de defaults que renderGeometryObject — sin esto, un MaterialInstance
+		// transparente sin textura de albedo asignada (ej. un material recien creado en el
+		// Material Editor) samplea (0,0,0,0) en HLSL: albedo.a queda en 0 sin importar el
+		// BaseColor.a configurado, y el objeto sale invisible/negro.
+		bindTextureFallbacks(deviceContext, materialInstance);
 
 		const MaterialParams& params = materialInstance->getParams();
-		m_cbPerMaterial.BaseColor = params.baseColor;
+		m_cbPerMaterial.BaseColor = computeTintedBaseColor(params, object.tint);
 		m_cbPerMaterial.Metallic = params.metallic;
 		m_cbPerMaterial.Roughness = params.roughness;
 		m_cbPerMaterial.AO = params.ao;
 		m_cbPerMaterial.NormalScale = params.normalScale;
 		m_cbPerMaterial.EmissiveStrength = params.emissiveStrength;
 		m_cbPerMaterial.AlphaCutoff = material->getDomain() == MaterialDomain::Masked ? params.alphaCutoff : 0.0f;
+		m_cbPerMaterial.UVTiling = params.uvTiling;
+		m_cbPerMaterial.UVOffset = params.uvOffset;
 		m_perMaterialBuffer.update(deviceContext, nullptr, 0, nullptr, &m_cbPerMaterial, 0, 0);
 		m_perMaterialBuffer.render(deviceContext, 2, 1, true);
 
@@ -854,6 +869,42 @@ DeferredRenderer::renderForwardObject(DeviceContext& deviceContext,
 		submesh.indexBuffer.render(deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
 		deviceContext.DrawIndexed(submesh.indexCount, submesh.startIndex, 0);
 	}
+}
+
+/**
+ * @brief Rellena con SRVs de default (blanco / normal plano) cualquier slot t0-t4 sin
+ * textura asignada. `bindTextures()` deja sin enlazar (null) cualquier slot cuyo
+ * `MaterialInstance` no tenga esa textura; sin un default, HLSL muestrea (0,0,0,0) para
+ * esos slots — el t0 (albedo) en particular rompe la detección de fondo del lighting pass
+ * en el pase opaco, y deja alpha en 0 (invisible) en el pase transparente.
+ * @note Usado tanto por `renderGeometryObject` como por `renderForwardObject`.
+ */
+void
+DeferredRenderer::bindTextureFallbacks(DeviceContext& deviceContext, MaterialInstance* materialInstance) {
+	auto bindFallback = [&](UINT slot, Texture* tex, ID3D11ShaderResourceView* fallback) {
+		if (fallback && (!tex || !tex->srv())) {
+			deviceContext.m_deviceContext->PSSetShaderResources(slot, 1, &fallback);
+		}
+	};
+	bindFallback(0, materialInstance->getAlbedo(),    m_defaultWhiteSRV);
+	bindFallback(1, materialInstance->getNormal(),    m_defaultFlatNormalSRV);
+	bindFallback(2, materialInstance->getMetallic(),  m_defaultWhiteSRV);
+	bindFallback(3, materialInstance->getRoughness(), m_defaultWhiteSRV);
+	bindFallback(4, materialInstance->getAO(),        m_defaultWhiteSRV);
+}
+
+/**
+ * @brief Calcula el BaseColor final para `CBPerMaterial`: RGB de `params.baseColor`
+ * multiplicado por `tint` (resaltado de selección, ver `RenderObject::tint`), alpha sin
+ * tocar. Usado tanto por `renderGeometryObject` como por `renderForwardObject`.
+ */
+XMFLOAT4
+DeferredRenderer::computeTintedBaseColor(const MaterialParams& params, const XMFLOAT3& tint) {
+	return XMFLOAT4(
+		params.baseColor.x * tint.x,
+		params.baseColor.y * tint.y,
+		params.baseColor.z * tint.z,
+		params.baseColor.w);
 }
 
 /**

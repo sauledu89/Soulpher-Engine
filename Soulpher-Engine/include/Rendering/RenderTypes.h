@@ -151,6 +151,8 @@ struct MaterialParams {
     float    normalScale       = 1.0f;  ///< Intensidad del normal map (1 = original).
     float    emissiveStrength  = 0.0f;  ///< Multiplicador de emisión (0 = sin luz propia).
     float    alphaCutoff       = 0.5f;  ///< Umbral de alpha para MaterialDomain::Masked.
+    XMFLOAT2 uvTiling          = XMFLOAT2(1.0f, 1.0f); ///< Repeticiones de la textura en U/V — multiplica las UVs del vértice antes de samplear (1,1 = sin tiling extra).
+    XMFLOAT2 uvOffset          = XMFLOAT2(0.0f, 0.0f); ///< Desplazamiento de UV tras aplicar el tiling (0,0 = sin desplazamiento) — util para encuadrar un patron o animar texturas (agua, cintas).
 };
 
 // ---------------------------------------------------------------------------
@@ -210,10 +212,10 @@ struct CBPerObject {
  * @struct CBPerMaterial
  * @brief Constant buffer b2: parámetros PBR que cambian por material/instancia.
  *
- * @note `pad0`–`pad5` alinean el struct a 64 bytes (múltiplo de 16) para cumplir
- * el requisito de HLSL de que los constant buffers sean múltiplos de 16 bytes.
- * Los campos pad2–pad5 están reservados para futuras extensiones del material
- * sin romper compatibilidad binaria con los shaders existentes.
+ * @note `pad0`–`pad1` alinean el struct a 64 bytes (múltiplo de 16) para cumplir el
+ * requisito de HLSL de que los constant buffers sean múltiplos de 16 bytes. `UVTiling` y
+ * `UVOffset` ocupan los cuatro floats que antes eran `pad2`–`pad5` — mismo layout binario,
+ * solo dos `float2` con nombre en vez de floats sueltos sin usar.
  */
 struct CBPerMaterial {
     XMFLOAT4 BaseColor        = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); ///< Color base RGBA.
@@ -225,10 +227,8 @@ struct CBPerMaterial {
     float    AlphaCutoff      = 0.0f;  ///< Umbral de alpha para Masked.
     float    pad0             = 0.0f;  ///< Padding de alineación HLSL.
     float    pad1             = 0.0f;  ///< Padding de alineación HLSL.
-    float    pad2             = 0.0f;  ///< Reservado para extensión futura.
-    float    pad3             = 0.0f;  ///< Reservado para extensión futura.
-    float    pad4             = 0.0f;  ///< Reservado para extensión futura.
-    float    pad5             = 0.0f;  ///< Reservado para extensión futura.
+    XMFLOAT2 UVTiling         = XMFLOAT2(1.0f, 1.0f); ///< Repeticiones de textura en U/V — multiplica las UVs antes de samplear (ver Soulpher-Engine.fx / DeferredGBuffer.hlsl).
+    XMFLOAT2 UVOffset         = XMFLOAT2(0.0f, 0.0f); ///< Desplazamiento de UV aplicado despues del tiling.
 };
 
 // ---------------------------------------------------------------------------
@@ -249,6 +249,19 @@ struct CBPerMaterial {
  * RenderObjects; el render thread los consume de forma independiente.
  * En este motor ambos están en el mismo thread, pero la estructura ya está preparada
  * para esa separación futura.
+ *
+ * @note [GameDev] `tint` existe porque en algún momento el resaltado de selección del
+ * viewport (Outliner/picking) escribía directamente sobre `MaterialInstance::getParams()
+ * .baseColor` cada frame — mutaba el ÚNICO `MaterialParams` que el actor y el Material
+ * Editor comparten. El bug resultante: el usuario bajaba el slider de Base Color, pero al
+ * siguiente frame `BaseApp::render()` lo pisaba con el tinte "normal" (blanco) antes de
+ * que el draw call lo usara — el valor editado nunca sobrevivía un frame. La lección
+ * general: cuando varios sistemas (aquí, "el actor está seleccionado" y "el usuario está
+ * editando su material") quieren influir el mismo dato compartido, hay que separar cuál
+ * es la fuente de verdad persistente (`MaterialParams`, propiedad del material) de cuál es
+ * un modificador transitorio de UN SOLO draw (`tint`, propiedad del `RenderObject` de este
+ * frame) — igual que Unreal separa el color base de un `MaterialInstance` del "selection
+ * outline" que dibuja el editor encima, sin tocar el asset.
  */
 struct RenderObject {
     Mesh*                          mesh              = nullptr;          ///< Geometría GPU a dibujar.
@@ -258,4 +271,5 @@ struct RenderObject {
     bool                           castShadow        = true;             ///< Si este objeto participa en el shadow pass.
     bool                           transparent       = false;            ///< Si pertenece a la lista transparente.
     float                          distanceToCamera  = 0.0f;             ///< Distancia a la cámara (para ordenación back-to-front en transparentes).
+    XMFLOAT3                       tint              = XMFLOAT3(1.0f, 1.0f, 1.0f); ///< Multiplicador RGB aplicado sobre BaseColor solo en este draw (ej. resaltado de selección). No se escribe en MaterialParams — así el color autorado por el Material Editor no se pierde entre frames.
 };
